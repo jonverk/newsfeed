@@ -67,6 +67,35 @@ These would each count as a failure even if the site technically works:
   It is reference material for whoever builds this, not product content.
 - Secrets via `wrangler secret`; nothing sensitive in the repo.
 
+## Launch content
+
+The site is allowed to be near-empty on day one; an empty blog is not a
+blocker. Two things ship seeded, so the design is reviewable with real content
+and a fresh agent has something true to read:
+
+1. **The org.** `ORG.md` in the parent folder (`/home/newsfeed/newsfeed/ORG.md`)
+   is the existing source of truth — a Mermaid flowchart with 14 nodes, each
+   label carrying a role, a name, and a short code (`LIS`, `AIS`, `ZHI`, `JEN`,
+   `DVIMD`, `SIN`, `KAR`, `BER`, `KLI`, `URS`, `ERI`, `EVA`, `RUN`, `KES`), and
+   edges carrying relationship text ("gives orders, takes advice, and holds
+   final authority"). The seed migration transcribes that graph into the
+   `people` table, using the short code as `slug`, the label as `role` and
+   `name`, the edge label as `relationship` on the child, and `active = false`
+   for `DVIMD` (marked `VACANT!`). The Mermaid source is preserved verbatim and
+   served at `/org.mmd`; the `/org` page renders a server-side text tree, never
+   client-side Mermaid, so the chart survives JavaScript being off.
+2. **One handbook entry and one post.** `ORG.md`'s content lands in the
+   handbook as an `org`-category rule (`ORG-001`, "Org chart and reporting
+   lines") whose body is the graph rewritten as an indented text tree, and the
+   first announcement is a placeholder: `the-news-jonverk-newsfeed`, titled
+   "The news — JonVerk Newsfeed", explaining what the site is for and how to
+   subscribe to it (i.e. check it, and the human mails the group). Marked
+   clearly as a placeholder to be replaced.
+
+Everything else starts empty. No invented humans, no invented policies. Real
+logging and verification rules are authored later through the CLI, which is
+also the first end-to-end exercise of the write path.
+
 ## Approaches considered
 
 **1. Repo as the database.** Content as markdown files with frontmatter;
@@ -152,6 +181,7 @@ Structured, so it renders as text and can be read by an agent.
 | `kind` | `human` \| `agent` |
 | `role` | title or function |
 | `reports_to` | `slug` or null (root) |
+| `relationship` | short text on the edge, e.g. "gives orders, takes advice, and holds final authority" |
 | `responsibilities` | short plain-text line |
 | `active` | boolean; former members are deactivated, never deleted |
 
@@ -178,6 +208,7 @@ Human surfaces (HTML, SSR):
   title, owner, and effective date.
 - `/handbook/:slug` — a rule. Every rule page has an anchor `#<rule_id>`.
 - `/org` — org chart rendered from `people` as a nested text tree.
+- `/org.mmd` — the original Mermaid source, served verbatim.
 - `/search?q=` — results across posts and rules.
 
 Agent surfaces (no chrome, exact same content):

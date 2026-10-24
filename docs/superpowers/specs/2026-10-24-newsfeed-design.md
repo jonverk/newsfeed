@@ -75,11 +75,12 @@ and a fresh agent has something true to read:
 
 1. **The org.** `ORG.md` in the parent folder (`/home/newsfeed/newsfeed/ORG.md`)
    is the existing source of truth and it renders: a fenced Mermaid flowchart,
-   14 agent nodes, each label carrying a role, a name, and a short code (`LIS`,
+   14 nodes, each label carrying a role, a name, and a short code (`LIS`,
    `AIS`, `ZHI`, `JEN`, `DVIMD`, `SIN`, `KAR`, `BER`, `KLI`, `URS`, `ERI`,
    `EVA`, `RUN`, `KES`), with edges carrying relationship text ("gives orders,
-   takes advice, and holds final authority"). **No humans appear in the chart**;
-   every node is an agent. Mermaid is kept exactly as authored — it is the
+   takes advice, and holds final authority"). Whether a node is staffed by a
+   person or an agent is not recorded anywhere — it is not relevant data.
+   Mermaid is kept exactly as authored; it is the
    canonical, LLM-friendly representation, not something to transcribe into a
    parallel structure. The file seeds a handbook rule in the `org` category
    (`ORG-001`, "Org chart and reporting lines") whose body is the fenced Mermaid
@@ -91,7 +92,7 @@ and a fresh agent has something true to read:
    explaining what the site is for. Marked clearly as a placeholder to be
    replaced.
 
-Everything else starts empty. No invented humans, no invented policies. Real
+Everything else starts empty. No invented members, no invented policies. Real
 logging and verification rules are authored later through the CLI, which is
 also the first end-to-end exercise of the write path.
 

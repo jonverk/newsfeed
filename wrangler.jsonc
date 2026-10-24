@@ -10,6 +10,9 @@
 	"vars": {
 		"VALUE_FROM_CLOUDFLARE": "Hello from Hono/CF"
 	},
+	"d1_databases": [
+		{ "binding": "DB", "database_name": "d1-db-newsletter", "database_id": "39f557f4-a961-428d-814e-36bf90470ff9", "migrations_dir": "migrations" }
+	],
 	"observability": {
 		"enabled": true
 	},

@@ -15,14 +15,17 @@
 		"publish": true
 	},
 	"dependencies": {
+		"highlight.js": "^11.12.0",
 		"hono": "4.11.1",
 		"isbot": "5.1.32",
+		"marked": "^18.1.1",
 		"react": "19.2.1",
 		"react-dom": "19.2.1",
 		"react-router": "7.9.6"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "1.52.1",
+		"@cloudflare/vitest-pool-workers": "^0.23.0",
 		"@cloudflare/workers-types": "^4.20260702.1",
 		"@react-router/dev": "7.9.6",
 		"@tailwindcss/vite": "4.1.17",
@@ -33,7 +36,8 @@
 		"typescript": "5.9.3",
 		"vite": "^7.0.0",
 		"vite-tsconfig-paths": "5.1.4",
-		"wrangler": "4.136.1"
+		"vitest": "^4.1.12",
+		"wrangler": "^4.152.0"
 	},
 	"private": true,
 	"scripts": {
@@ -42,7 +46,8 @@
 		"deploy": "npm run build && wrangler deploy",
 		"dev": "react-router dev",
 		"preview": "npm run build && vite preview",
-		"typecheck": "npm run cf-typegen && react-router typegen && tsc -b"
+		"typecheck": "npm run cf-typegen && react-router typegen && tsc -b",
+		"test": "vitest run"
 	},
 	"type": "module"
 }

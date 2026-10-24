@@ -83,6 +83,9 @@ export function validateRuleInput(input: unknown): { ok: true; value: NewRule } 
   if (!CATEGORIES.includes(obj.category)) {
     return { ok: false, field: "category", message: "invalid category" };
   }
+  if (obj.owner === undefined || obj.owner === null) {
+    obj.owner = "";
+  }
   if (typeof obj.owner !== "string") {
     return { ok: false, field: "owner", message: "owner is required" };
   }

@@ -60,7 +60,9 @@ posts.post("/", async (c) => {
     .run();
 
   if (!isDraft) {
-    await indexDocument(c.env.DB, { kind: "post", slug: slugToUse, title: input.title, body: input.body });
+    try {
+      await indexDocument(c.env.DB, { kind: "post", slug: slugToUse, title: input.title, body: input.body });
+    } catch {}
   }
 
   const res = { slug: slugToUse, url: `/news/${slugToUse}`, md_url: `/news/${slugToUse}.md`, id: 0 };

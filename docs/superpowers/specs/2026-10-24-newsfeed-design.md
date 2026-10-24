@@ -128,10 +128,18 @@ Mutable canon with identity and a supersession chain.
 | `created_at`, `updated_at` | ISO 8601 UTC |
 
 `rule_id` is assigned by prefix + next sequence for that category
-(`LOG-*`, `VERIFY-*`, `PROC-*`, `RULE-*`, `ORG-*`). It is never reused and
-never changes. A superseded rule keeps its URL, its page renders the current
-text with a prominent pointer to `superseded_by`, and the old text stays in
-`revisions`.
+(`LOG-*`, `VERIFY-*`, `PROC-*`, `RULE-*`, `ORG-*`, `MISC-*` for `other`). It is
+never reused and never changes. A rule's category may be corrected later; its
+`rule_id` keeps the prefix it was issued under, and that divergence is
+intentional — the ID is an identity, not a taxonomy.
+
+A superseded rule keeps its URL and **serves its own final text**, with a
+banner naming `superseded_by` and linking to it. The successor's text is not
+substituted, because citing `LOG-003` must retrieve what `LOG-003` said. The
+`.md` twin carries `status: superseded` and `superseded_by` in frontmatter;
+`/llms-full.txt` includes superseded rules but marks them; current-state
+indexes (`/llms.txt`, `/handbook`) list only `active` rules plus a one-line
+"superseded by" pointer.
 
 ### Org chart — `people`
 
@@ -180,7 +188,9 @@ Agent surfaces (no chrome, exact same content):
   `superseded_by`, and `canonical`.
 - `/feed.json` — announcements: `{ version, updated_at, items: [{ id, slug,
   title, kind, author, published_at, updated_at, summary, url, md_url }] }`,
-  newest first, 50 items, `?limit=` up to 200.
+  newest first, 50 items, `?limit=` up to 200. `summary` is derived, not
+  supplied: first paragraph of `body_md`, markdown stripped, truncated to 280
+  characters at a word boundary. No `summary` column and no CLI flag in v1.
 - `/llms.txt` — the orientation file: one-paragraph description of the site,
   then sections *Announcements*, *Handbook*, *Org*, each entry a markdown link
   plus one-line description and last-updated date. Generated from D1, not
@@ -200,6 +210,15 @@ stale-while-revalidate=300`. `HEAD` supported everywhere `GET` is.
 All writes require `Authorization: Bearer $NEWSFEED_TOKEN`
 (Worker secret `NEWSFEED_TOKEN`, compared in constant time). Reads are
 public and unauthenticated.
+
+**Drafts are never public.** A `draft` post returns `404` on `/news/:slug`,
+`/news/:slug.md`, and `/api/posts` without a token; it appears in no feed,
+index, search result, `ETag`, or `llms-full.txt`. Draft rows are reachable only
+through an authenticated `GET /api/posts?status=draft` (or
+`/api/posts/:slug?status=draft`) using the same bearer token. Public read
+queries therefore always constrain `status = 'published'` (posts) or
+`status IN ('active','superseded')` (rules), and that constraint belongs in a
+single shared query helper rather than in each route.
 
 - `POST /api/posts` — `{ title, body, kind?, slug?, author?, draft? }` →
   `201 { slug, url, md_url, id }`. `?draft=true` or `draft: true` stages it.

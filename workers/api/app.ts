@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../lib/env";
 import { posts } from "./posts";
+import { surfaces } from "./surfaces";
 
 export const api = new Hono<{ Bindings: AppEnv }>();
 
@@ -19,3 +20,4 @@ api.get("/api/health/fts", async (c) => {
 });
 
 api.route("/api/posts", posts);
+api.route("/", surfaces);

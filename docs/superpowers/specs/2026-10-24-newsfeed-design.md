@@ -74,23 +74,22 @@ blocker. Two things ship seeded, so the design is reviewable with real content
 and a fresh agent has something true to read:
 
 1. **The org.** `ORG.md` in the parent folder (`/home/newsfeed/newsfeed/ORG.md`)
-   is the existing source of truth — a Mermaid flowchart with 14 nodes, each
-   label carrying a role, a name, and a short code (`LIS`, `AIS`, `ZHI`, `JEN`,
-   `DVIMD`, `SIN`, `KAR`, `BER`, `KLI`, `URS`, `ERI`, `EVA`, `RUN`, `KES`), and
-   edges carrying relationship text ("gives orders, takes advice, and holds
-   final authority"). The seed migration transcribes that graph into the
-   `people` table, using the short code as `slug`, the label as `role` and
-   `name`, the edge label as `relationship` on the child, and `active = false`
-   for `DVIMD` (marked `VACANT!`). The Mermaid source is preserved verbatim and
-   served at `/org.mmd`; the `/org` page renders a server-side text tree, never
-   client-side Mermaid, so the chart survives JavaScript being off.
-2. **One handbook entry and one post.** `ORG.md`'s content lands in the
-   handbook as an `org`-category rule (`ORG-001`, "Org chart and reporting
-   lines") whose body is the graph rewritten as an indented text tree, and the
-   first announcement is a placeholder: `the-news-jonverk-newsfeed`, titled
-   "The news — JonVerk Newsfeed", explaining what the site is for and how to
-   subscribe to it (i.e. check it, and the human mails the group). Marked
-   clearly as a placeholder to be replaced.
+   is the existing source of truth and it renders: a fenced Mermaid flowchart,
+   14 agent nodes, each label carrying a role, a name, and a short code (`LIS`,
+   `AIS`, `ZHI`, `JEN`, `DVIMD`, `SIN`, `KAR`, `BER`, `KLI`, `URS`, `ERI`,
+   `EVA`, `RUN`, `KES`), with edges carrying relationship text ("gives orders,
+   takes advice, and holds final authority"). **No humans appear in the chart**;
+   every node is an agent. Mermaid is kept exactly as authored — it is the
+   canonical, LLM-friendly representation, not something to transcribe into a
+   parallel structure. The file seeds a handbook rule in the `org` category
+   (`ORG-001`, "Org chart and reporting lines") whose body is the fenced Mermaid
+   block verbatim; the same source is served raw at `/org.mmd`, as markdown at
+   `/org.md`, and rendered at `/org`.
+2. **One handbook entry and one post.** `ORG-001` as above (the only seeded
+   rule), and the first announcement is a placeholder:
+   `the-news-jonverk-newsfeed`, titled "The news — JonVerk Newsfeed",
+   explaining what the site is for. Marked clearly as a placeholder to be
+   replaced.
 
 Everything else starts empty. No invented humans, no invented policies. Real
 logging and verification rules are authored later through the CLI, which is
@@ -170,20 +169,18 @@ substituted, because citing `LOG-003` must retrieve what `LOG-003` said. The
 indexes (`/llms.txt`, `/handbook`) list only `active` rules plus a one-line
 "superseded by" pointer.
 
-### Org chart — `people`
+### Org chart — a rule, not a table
 
-Structured, so it renders as text and can be read by an agent.
+There is deliberately **no `people` table**. The org chart is one handbook rule
+(`ORG-001`, category `org`) whose body is the Mermaid source from `ORG.md`,
+verbatim and fenced. Mermaid was chosen for this precisely because it is
+LLM-friendly: the graph is readable as text, the relationships are in the edge
+labels, and there is one representation instead of two that can drift apart.
+Editing the chart means editing that rule through the normal handbook write
+path, which means the previous chart lives in `revisions` like any other rule.
 
-| column | notes |
-| --- | --- |
-| `slug` | unique, e.g. `jon`, `agent-ops-1` |
-| `name` | display name |
-| `kind` | `human` \| `agent` |
-| `role` | title or function |
-| `reports_to` | `slug` or null (root) |
-| `relationship` | short text on the edge, e.g. "gives orders, takes advice, and holds final authority" |
-| `responsibilities` | short plain-text line |
-| `active` | boolean; former members are deactivated, never deleted |
+`DVIMD` is marked `VACANT!` in the source and is seeded exactly as written;
+vacancy is content, not a status the app models.
 
 ### Revisions — `revisions`
 
@@ -207,8 +204,12 @@ Human surfaces (HTML, SSR):
 - `/handbook` — index grouped by category, each entry showing `rule_id`,
   title, owner, and effective date.
 - `/handbook/:slug` — a rule. Every rule page has an anchor `#<rule_id>`.
-- `/org` — org chart rendered from `people` as a nested text tree.
-- `/org.mmd` — the original Mermaid source, served verbatim.
+- `/org` — the org chart. Server-renders the Mermaid source inside a `<pre>`
+  (always readable, always crawlable, no JS needed), and progressively
+  enhances to a drawn diagram with mermaid.js when scripts are available. The
+  rendering is never the source of truth; the fence is.
+- `/org.md` — the markdown twin: frontmatter plus the fenced Mermaid block.
+- `/org.mmd` — the raw Mermaid source, `text/plain`.
 - `/search?q=` — results across posts and rules.
 
 Agent surfaces (no chrome, exact same content):
@@ -260,8 +261,8 @@ single shared query helper rather than in each route.
   is the cheap "what changed since I last looked" call.
 - `PUT /api/handbook/:slug` — create or update `{ rule_id?, title, body,
   category, owner, effective_at? }`. Server assigns `rule_id` when omitted.
+  `ORG-001` is updated this way.
 - `POST /api/handbook/:slug/supersede` — `{ superseded_by: rule_id }`.
-- `PUT /api/people/:slug` — create or update a person/agent.
 - `GET /api/search?q=&kind=` — JSON results with snippet and URL.
 
 Validation on every write: slug `^[a-z0-9][a-z0-9-]{0,80}$`, body ≤ 64 KB,
@@ -284,7 +285,6 @@ newsfeed list --since 2026-10-20 --json
 newsfeed get 2026-10-24-blocker-cleared
 newsfeed handbook set logging-manual --file logging.md --category logging --owner Jon
 newsfeed handbook supersede logging-manual --by LOG-004
-newsfeed org set agent-ops-1 --name "Ops 1" --kind agent --reports-to jon
 newsfeed search "verification before done"
 ```
 
@@ -335,8 +335,15 @@ Building it is a separate piece of work.
 3. Every rule has a permanent URL and a citable `rule_id`; superseding one
    leaves the old URL alive and pointing at the replacement.
 4. Pages are readable with JavaScript disabled and return `304` when nothing
-   changed.
+   changed. The org chart is the one progressive enhancement: with scripts off
+   `/org` still shows the full Mermaid source; with scripts on it draws.
 5. It looks like someone designed it on purpose.
+
+## Artifacts
+
+The implementation plan is committed at
+`docs/superpowers/plans/2026-10-24-newsfeed-plan.md` **and** copied to
+`PLAN.md` at the repository root, which is the copy Jon reads.
 
 ## Left to the builder
 

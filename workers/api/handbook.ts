@@ -3,7 +3,7 @@ import type { AppEnv } from "../lib/env";
 import { requireToken } from "../lib/auth";
 import { validateRuleInput } from "../lib/validate";
 import { getRule, getRuleById, listRules } from "../lib/content";
-import { nextRuleId } from "../lib/slug";
+import { nextRuleId, PREFIX_BY_CATEGORY } from "../lib/slug";
 import { indexDocument } from "../lib/search";
 
 export const handbook = new Hono<{ Bindings: AppEnv }>();
@@ -49,7 +49,6 @@ handbook.put("/:slug", async (c) => {
     if (!rule_id) {
       rule_id = await nextRuleId(c.env.DB, input.category);
     } else {
-      const { PREFIX_BY_CATEGORY } = await import("../lib/slug");
       const expectedPrefix = PREFIX_BY_CATEGORY[input.category];
       if (rule_id.split("-")[0] !== expectedPrefix) {
         return c.json({ message: `rule_id prefix must match category prefix '${expectedPrefix}'`, field: "rule_id" }, 400);

@@ -1,6 +1,6 @@
 import { SELF, env } from "cloudflare:test";
 import { expect, it } from "vitest";
-import { searchContent } from "../workers/lib/search";
+import { searchContent, sanitizeSnippet } from "../workers/lib/search";
 
 const auth = { authorization: "Bearer test-token", "content-type": "application/json" };
 
@@ -37,4 +37,10 @@ it("returns search hits via the api", async () => {
   expect(res.status).toBe(200);
   const data = await res.json<{ q: string; hits: Array<{ slug: string }> }>();
   expect(data.hits.map((h) => h.slug)).toContain("verification");
+});
+
+it("sanitizes snippets to prevent XSS while preserving mark tags", () => {
+  const dirty = '<script>alert(1)</script> <mark>highlight</mark> <img src=x onerror="alert(2)"> & "test"';
+  const clean = sanitizeSnippet(dirty);
+  expect(clean).toBe('&lt;script&gt;alert(1)&lt;/script&gt; <mark>highlight</mark> &lt;img src=x onerror=&quot;alert(2)&quot;&gt; &amp; &quot;test&quot;');
 });

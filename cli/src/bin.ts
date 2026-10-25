@@ -62,7 +62,7 @@ async function main() {
       const kind = kindIdx !== -1 ? args[kindIdx + 1] : undefined;
       const slugIdx = args.indexOf("--slug");
       const slug = slugIdx !== -1 ? args[slugIdx + 1] : undefined;
-      const draft = args.includes("--draft");
+      const draft = args.includes("--draft") ? true : undefined;
 
       await handlePostCreate(client, { file, title, kind, slug, draft });
     } else if (cmd === "rule" && args[1] === "set") {

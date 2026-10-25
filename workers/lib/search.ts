@@ -17,6 +17,18 @@ export async function removeFromIndex(db: D1Database, kind: "post" | "rule", slu
   } catch {}
 }
 
+export function sanitizeSnippet(raw: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/&lt;mark&gt;/g, "<mark>")
+    .replace(/&lt;\/mark&gt;/g, "</mark>");
+}
+
 export async function searchContent(db: D1Database, q: string, kind?: "post" | "rule"): Promise<SearchHit[]> {
   const query = (q || "").trim();
   if (!query) {
@@ -53,7 +65,7 @@ WHERE search_index MATCH ?`;
         kind: r.kind,
         slug: r.slug,
         title: r.title,
-        snippet: r.snippet || "",
+        snippet: sanitizeSnippet(r.snippet || ""),
         url,
         md_url,
       });

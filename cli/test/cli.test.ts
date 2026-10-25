@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
+import * as fs from "node:fs";
 import { NewsfeedClient } from "../src/client.js";
+import { handlePostCreate } from "../src/commands.js";
 
 describe("NewsfeedClient", () => {
   it("defaults to production URL and reads token", () => {
@@ -34,5 +36,21 @@ describe("NewsfeedClient", () => {
       "https://newsfeed.jonverk.online/feed.json",
       expect.anything()
     );
+  });
+
+  it("respects frontmatter draft: true when cli draft flag is omitted", async () => {
+    const tmpFile = "/tmp/test-frontmatter-draft.md";
+    fs.writeFileSync(tmpFile, '---\ntitle: "Draft Post"\ndraft: "true"\n---\nDraft content');
+    const client = new NewsfeedClient({ token: "test-token" });
+    const createPostSpy = vi.spyOn(client, "createPost").mockResolvedValue({ id: 1, slug: "draft-post" });
+
+    await handlePostCreate(client, { file: tmpFile });
+    expect(createPostSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Draft Post",
+        draft: true,
+      })
+    );
+    fs.unlinkSync(tmpFile);
   });
 });

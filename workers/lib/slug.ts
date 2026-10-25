@@ -17,6 +17,7 @@ export const PREFIX_BY_CATEGORY: Record<string, string> = {
   logging: "LOG",
   verification: "VERIFY",
   process: "PROC",
+  faq: "FAQ",
   other: "MISC",
 };
 

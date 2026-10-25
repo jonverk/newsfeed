@@ -9,6 +9,7 @@ it("assigns sequential prefixed rule ids per category", async () => {
   await SELF.fetch("https://x.test/api/handbook/logging-manual", { method: "PUT", headers: auth, body: JSON.stringify({ title: "Logging", body: "log", category: "logging", owner: "Jon" }) });
   expect(await nextRuleId(env.DB, "logging")).toBe("LOG-002");
   expect(await nextRuleId(env.DB, "other")).toBe("MISC-001");
+  expect(await nextRuleId(env.DB, "faq")).toBe("FAQ-001");
 });
 
 it("serves a rule at a stable url and id", async () => {
@@ -43,4 +44,8 @@ it("rejects an unknown category and an explicit bad rule id", async () => {
   const mismatchedPrefix = await SELF.fetch("https://x.test/api/handbook/bad3", { method: "PUT", headers: auth, body: JSON.stringify({ title: "B", body: "b", category: "logging", rule_id: "RULE-001" }) });
   expect(mismatchedPrefix.status).toBe(400);
   expect((await mismatchedPrefix.json<{ field: string }>()).field).toBe("rule_id");
+
+  const validFaq = await SELF.fetch("https://x.test/api/handbook/faq-test", { method: "PUT", headers: auth, body: JSON.stringify({ title: "FAQ Test", body: "answering questions", category: "faq", rule_id: "FAQ-005" }) });
+  expect(validFaq.status).toBe(200);
+  expect((await validFaq.json<{ rule_id: string }>()).rule_id).toBe("FAQ-005");
 });

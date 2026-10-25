@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../lib/env";
 import { listPublishedPosts, getPublishedPost, listRules, getRule } from "../lib/content";
 import { deriveSummary, toMarkdownDocument } from "../lib/render";
-import { conditionalResponse } from "../lib/http";
+import { conditionalResponse, etagFor } from "../lib/http";
 
 export const surfaces = new Hono<{ Bindings: AppEnv }>();
 
@@ -35,8 +35,10 @@ surfaces.get("/feed.json", async (c) => {
   return conditionalResponse(c.req.raw, body, { contentType: "application/json", updatedAt: updated_at });
 });
 
-surfaces.get("/news/:slug.md", async (c) => {
-  const slug = c.req.param("slug");
+surfaces.get("/news/:file", async (c) => {
+  const file = c.req.param("file");
+  if (!file || !file.endsWith(".md")) return c.json({ message: "Not found" }, 404);
+  const slug = file.slice(0, -3);
   const post = await getPublishedPost(c.env.DB, slug);
   if (!post) return c.json({ message: "Not found" }, 404);
   const doc = toMarkdownDocument({
@@ -56,8 +58,10 @@ surfaces.get("/news/:slug.md", async (c) => {
   return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: post.updated_at || post.created_at });
 });
 
-surfaces.get("/handbook/:slug.md", async (c) => {
-  const slug = c.req.param("slug");
+surfaces.get("/handbook/:file", async (c) => {
+  const file = c.req.param("file");
+  if (!file || !file.endsWith(".md")) return c.json({ message: "Not found" }, 404);
+  const slug = file.slice(0, -3);
   const rule = await getRule(c.env.DB, slug);
   if (!rule || rule.status === "draft") return c.json({ message: "Not found" }, 404);
   const doc = toMarkdownDocument({
@@ -180,6 +184,19 @@ surfaces.get("/llms-full.txt", async (c) => {
     chunks.push(doc);
   }
   const out = chunks.join("\n\n---\n\n");
+  const etag = await etagFor(out, updated);
+  const ifNone = c.req.header("if-none-match");
+  const headers = new Headers({ "Content-Type": "text/plain; charset=utf-8" });
+  headers.set("ETag", etag);
+  if (updated) {
+    headers.set("Last-Modified", new Date(updated).toUTCString());
+  }
+  headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+
+  if (ifNone && ifNone.includes(etag)) {
+    return new Response(null, { status: 304, headers });
+  }
+
   // stream-like response
   const stream = new ReadableStream({
     start(controller) {
@@ -201,11 +218,6 @@ surfaces.get("/llms-full.txt", async (c) => {
       send();
     },
   });
-  const headers = new Headers({ "Content-Type": "text/plain; charset=utf-8" });
-  // add cache headers
-  const etag = await import("../lib/http").then((m) => m.etagFor(out, updated));
-  headers.set("ETag", await etag);
-  headers.set("Last-Modified", new Date(updated || nowIso()).toUTCString());
-  headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+
   return new Response(stream, { status: 200, headers });
 });

@@ -23,6 +23,8 @@ export function slugify(input: string): string {
   return s;
 }
 
+const SAFE_PROTO_RE = /^(?:https?|mailto):|^\/|^#/i;
+
 const marked = new Marked({
   gfm: true,
 });
@@ -31,6 +33,19 @@ marked.use({
   renderer: {
     html(token: any) {
       return escapeHtml(token.text || "");
+    },
+    link(token: any) {
+      const href = token.href || "";
+      const safeHref = SAFE_PROTO_RE.test(href.trim()) ? href : "#";
+      const text = token.tokens ? this.parser.parseInline(token.tokens) : escapeHtml(token.text || "");
+      const titleAttr = token.title ? ` title="${escapeHtml(token.title)}"` : "";
+      return `<a href="${escapeHtml(safeHref)}"${titleAttr}>${text}</a>`;
+    },
+    image(token: any) {
+      const href = token.href || "";
+      const safeHref = SAFE_PROTO_RE.test(href.trim()) ? href : "";
+      const titleAttr = token.title ? ` title="${escapeHtml(token.title)}"` : "";
+      return `<img src="${escapeHtml(safeHref)}" alt="${escapeHtml(token.text || "")}"${titleAttr}>`;
     },
     code(token: any) {
       const lang = token.lang;
@@ -52,7 +67,8 @@ marked.use({
     heading(token: any) {
       const text = token.text || "";
       const id = slugify(text);
-      return `<h${token.depth} id="${escapeHtml(id)}">${text}</h${token.depth}>\n`;
+      const content = token.tokens ? this.parser.parseInline(token.tokens) : escapeHtml(text);
+      return `<h${token.depth} id="${escapeHtml(id)}">${content}</h${token.depth}>\n`;
     },
   },
 });
@@ -63,50 +79,47 @@ export function renderMarkdown(md: string): string {
 
 export function deriveSummary(md: string, maxChars = 280): string {
   if (!md) return "";
-  // Strip fences
-  let text = md.replace(/```[\s\S]*?```/g, " ");
-  // Strip inline code
-  text = text.replace(/`[^`]+`/g, " ");
-  // Strip images
-  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1 ");
-  // Strip links
-  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1 ");
-  // Strip headings
-  text = text.replace(/^#{1,6}\s+/gm, "");
-  // Strip emphasis
-  text = text.replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, "$1");
-  text = text.replace(/[*_]+/g, "");
-  // Take first paragraph
+  // Strip code fences
+  const text = md.replace(/```[\s\S]*?```/g, " ");
+  // Split into paragraphs by blank lines
   const paragraphs = text.split(/\n\s*\n/);
-  let para = paragraphs.find((p) => {
-    const t = p.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
-    // skip if it's just the heading text that was stripped to empty-ish
-    return t.length > 0 && !t.match(/^#{0,6}$/);
-  }) || paragraphs[paragraphs.length - 1] || text;
-  para = para.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
-  // If para became very short (like just "Title" remnants), use the full text after heading
-  if (para.length < 10 && text.includes("word")) {
-    para = text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+  // Find the first paragraph with non-heading content
+  let para = "";
+  for (const rawP of paragraphs) {
+    const lines = rawP.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+    const nonHeadingLines = lines.filter((l) => !l.startsWith("#"));
+    if (nonHeadingLines.length > 0) {
+      para = nonHeadingLines.join(" ");
+      break;
+    }
   }
-  // If it's just the heading stripped and we have long content after, use original approach differently
-  // For the test case, after stripping heading we get "word word ..." - but our para would be from paragraphs split
-  // The test does "# Title\n\n" + "word ".repeat(200) so first para after split is "word word ..." if we handle correctly
-  if (para === "word" || (para.match(/^word(\s+word)*$/) && para.length > 50)) {
-    // ensure long summary
+  // If only heading lines exist, fall back to stripped headings
+  if (!para) {
+    const firstP = paragraphs.find((p) => p.trim().length > 0) || "";
+    para = firstP.replace(/^#{1,6}\s+/gm, "");
   }
+
+  // Strip inline markdown syntax
+  para = para
+    .replace(/`[^`]+`/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1 ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1 ")
+    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, "$1")
+    .replace(/[*_]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
   if (para.length <= maxChars) {
-    if (para.endsWith("word")) return para;
-    // if it got cut weirdly, try to reconstruct from the long run
+    return para;
   }
-  if (para.length <= maxChars && para.includes("word ")) return para.replace(/\s+$/, "");
-  // cut at word boundary
+
+  // Cut cleanly at word boundary
   const truncated = para.slice(0, maxChars);
   const lastSpace = truncated.lastIndexOf(" ");
   if (lastSpace > 0) {
-    const cut = truncated.slice(0, lastSpace).trim();
-    return cut.replace(/[.,!?;:]+$/, "").trim();
+    return truncated.slice(0, lastSpace).trim();
   }
-  return truncated.trim().replace(/[.,!?;:]+$/, "").trim();
+  return truncated.trim();
 }
 
 export function toMarkdownDocument(doc: { frontmatter: Record<string, string | number | boolean | null | undefined>; body: string }): string {
@@ -126,8 +139,12 @@ export function toMarkdownDocument(doc: { frontmatter: Record<string, string | n
       lines.push(`${k}: ${v}`);
       continue;
     }
-    // string
-    lines.push(`${k}: ${String(v)}`);
+    const strVal = String(v);
+    if (k === "canonical" || strVal.startsWith("/") || /[\r\n:#"']/.test(strVal)) {
+      lines.push(`${k}: ${JSON.stringify(strVal)}`);
+      continue;
+    }
+    lines.push(`${k}: ${strVal}`);
   }
   lines.push("---");
   lines.push("");

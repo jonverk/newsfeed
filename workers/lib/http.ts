@@ -5,34 +5,30 @@ async function sha256Hex(s: string): Promise<string> {
   return bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function etagFor(body: string, updatedAt: string): Promise<string> {
-  const h = await sha256Hex(body + updatedAt);
+export async function etagFor(body: string, updatedAt?: string): Promise<string> {
+  const h = await sha256Hex(updatedAt ? body + updatedAt : body);
   return `"` + h.slice(0, 16) + `"`;
 }
 
 export async function conditionalResponse(
   request: Request,
   body: string,
-  init: { contentType: string; updatedAt: string }
+  init: { contentType: string; updatedAt?: string; headers?: HeadersInit }
 ): Promise<Response> {
   const etag = await etagFor(body, init.updatedAt);
-  const lastMod = new Date(init.updatedAt).toUTCString();
+  const headers = new Headers(init.headers || {});
+  headers.set("ETag", etag);
+  if (init.updatedAt) {
+    headers.set("Last-Modified", new Date(init.updatedAt).toUTCString());
+  }
+  headers.set("Cache-Control", headers.get("Cache-Control") || "public, max-age=60, stale-while-revalidate=300");
+
   const ifNone = request.headers.get("if-none-match");
   if (ifNone && ifNone.includes(etag)) {
-    const headers = new Headers();
-    headers.set("ETag", etag);
-    headers.set("Last-Modified", lastMod);
-    headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
-    if (request.method === "HEAD") {
-      return new Response(null, { status: 304, headers });
-    }
     return new Response(null, { status: 304, headers });
   }
-  const headers = new Headers(init.headers || {});
+
   headers.set("Content-Type", init.contentType);
-  headers.set("ETag", etag);
-  headers.set("Last-Modified", lastMod);
-  headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
   if (request.method === "HEAD") {
     return new Response(null, { status: 200, headers });
   }

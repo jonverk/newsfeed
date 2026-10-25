@@ -10,5 +10,5 @@ search.get("/", async (c) => {
   const kind = c.req.query("kind") as any;
   const hits = await searchContent(c.env.DB, q, kind);
   const body = JSON.stringify({ q, hits });
-  return conditionalResponse(c.req.raw, body, { contentType: "application/json", updatedAt: new Date().toISOString() });
+  return conditionalResponse(c.req.raw, body, { contentType: "application/json" });
 });

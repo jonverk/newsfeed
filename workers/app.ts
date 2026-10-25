@@ -1,9 +1,12 @@
 import { Hono } from "hono";
 import { createRequestHandler } from "react-router";
+import type { AppEnv } from "./lib/env";
+import { api } from "./api/app";
 
-const app = new Hono();
+const app = new Hono<{ Bindings: AppEnv }>();
 
-// Add more routes here
+// Mount the API and surface endpoints
+app.route("/", api);
 
 app.get("*", (c) => {
 	const requestHandler = createRequestHandler(

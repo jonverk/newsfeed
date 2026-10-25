@@ -8,6 +8,29 @@ it("escapes raw HTML instead of rendering it", () => {
   expect(html).not.toContain("<script>");
   expect(html).not.toContain("<img src=x");
   expect(html).toContain("&lt;script&gt;");
+
+  const headingHtml = renderMarkdown("# <script>alert(1)</script>");
+  expect(headingHtml).not.toContain("<script>");
+  expect(headingHtml).toContain("&lt;script&gt;");
+});
+
+it("sanitizes dangerous schemes in links and images", () => {
+  const linkHtml = renderMarkdown("[click me](javascript:alert(1))");
+  expect(linkHtml).not.toContain("javascript:");
+  expect(linkHtml).toContain('href="#"');
+
+  const imgHtml = renderMarkdown("![alt](javascript:alert(2))");
+  expect(imgHtml).not.toContain("javascript:");
+  expect(imgHtml).toContain('src=""');
+
+  const safeHtml = renderMarkdown("[ok](https://example.com)");
+  expect(safeHtml).toContain('href="https://example.com"');
+});
+
+it("renders inline formatting inside headings", () => {
+  const html = renderMarkdown("# Title with **bold** and `code`");
+  expect(html).toContain("<strong>bold</strong>");
+  expect(html).toContain("<code>code</code>");
 });
 
 it("derives a 280 char summary from the first paragraph", () => {

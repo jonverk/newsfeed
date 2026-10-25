@@ -19,6 +19,11 @@ it("rejects writes without the token", async () => {
   expect(res.status).toBe(401);
 });
 
+it("rejects empty Bearer auth header", async () => {
+  const res = await SELF.fetch("https://x.test/api/posts", { method: "POST", headers: { authorization: "Bearer " }, body: JSON.stringify({ title: "T", body: "B" }) });
+  expect(res.status).toBe(401);
+});
+
 it("creates a published post and exposes it in the list", async () => {
   const res = await SELF.fetch("https://x.test/api/posts", { method: "POST", headers: auth, body: JSON.stringify({ title: "Blocker cleared", body: "All free to work." }) });
   expect(res.status).toBe(201);
@@ -42,6 +47,9 @@ it("rejects an empty title and an oversized body with a field name", async () =>
   const empty = await SELF.fetch("https://x.test/api/posts", { method: "POST", headers: auth, body: JSON.stringify({ title: "", body: "x" }) });
   expect(empty.status).toBe(400);
   expect((await empty.json<{ field: string }>()).field).toBe("title");
+  const newline = await SELF.fetch("https://x.test/api/posts", { method: "POST", headers: auth, body: JSON.stringify({ title: "Bad\nTitle", body: "x" }) });
+  expect(newline.status).toBe(400);
+  expect((await newline.json<{ field: string }>()).field).toBe("title");
   const big = await SELF.fetch("https://x.test/api/posts", { method: "POST", headers: auth, body: JSON.stringify({ title: "Big", body: "x".repeat(65537) }) });
   expect(big.status).toBe(400);
   expect((await big.json<{ field: string }>()).field).toBe("body");

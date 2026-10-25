@@ -23,6 +23,9 @@ export function validatePostInput(input: unknown): { ok: true; value: NewPost } 
   if (typeof title !== "string" || title.trim() === "") {
     return { ok: false, field: "title", message: "title is required" };
   }
+  if (/[\r\n]/.test(title)) {
+    return { ok: false, field: "title", message: "newlines not allowed in title" };
+  }
   if (title.length > 120) {
     return { ok: false, field: "title", message: "title too long" };
   }
@@ -69,6 +72,9 @@ export function validateRuleInput(input: unknown): { ok: true; value: NewRule } 
   const title = obj.title;
   if (typeof title !== "string" || title.trim() === "") {
     return { ok: false, field: "title", message: "title is required" };
+  }
+  if (/[\r\n]/.test(title)) {
+    return { ok: false, field: "title", message: "newlines not allowed in title" };
   }
   if (title.length > 120) {
     return { ok: false, field: "title", message: "title too long" };

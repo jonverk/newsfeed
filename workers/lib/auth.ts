@@ -16,8 +16,15 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 export async function requireToken(request: Request, env: AppEnv): Promise<Response | null> {
+  const token = env.NEWSFEED_TOKEN;
+  if (!token || token.trim() === "") {
+    return new Response(JSON.stringify({ message: "Unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }
   const auth = request.headers.get("authorization") || "";
-  const expected = "Bearer " + (env.NEWSFEED_TOKEN || "");
+  const expected = "Bearer " + token;
   const a = await sha256(auth);
   const b = await sha256(expected);
   if (constantTimeEqual(a, b)) {

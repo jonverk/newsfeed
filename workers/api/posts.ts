@@ -101,6 +101,20 @@ posts.patch("/:slug", async (c) => {
   } catch {
     return c.json({ message: "Invalid JSON", field: "body" }, 400);
   }
+  if (typeof body.title === "string") {
+    if (body.title.trim() === "") {
+      return c.json({ message: "title cannot be empty", field: "title" }, 400);
+    }
+    if (/[\r\n]/.test(body.title)) {
+      return c.json({ message: "newlines not allowed in title", field: "title" }, 400);
+    }
+    if (body.title.length > 120) {
+      return c.json({ message: "title too long", field: "title" }, 400);
+    }
+  }
+  if (typeof body.body === "string" && body.body.length > 65536) {
+    return c.json({ message: "body too large", field: "body" }, 400);
+  }
   const ts = nowIso();
   // save revision
   await c.env.DB.prepare("INSERT INTO revisions (entity_type,entity_ref,title,body_md,saved_at,saved_by) VALUES (?,?,?,?,?,?)")
@@ -108,12 +122,6 @@ posts.patch("/:slug", async (c) => {
     .run();
   const newTitle = typeof body.title === "string" ? body.title : post.title;
   const newBody = typeof body.body === "string" ? body.body : post.body_md;
-  if (typeof body.body === "string" && body.body.length > 65536) {
-    return c.json({ message: "body too large", field: "body" }, 400);
-  }
-  if (typeof body.title === "string" && body.title.length > 120) {
-    return c.json({ message: "title too long", field: "title" }, 400);
-  }
   await c.env.DB.prepare("UPDATE posts SET title=?, body_md=?, updated_at=? WHERE slug = ?").bind(newTitle, newBody, ts, slug).run();
   if (post.status === "published") {
     await indexDocument(c.env.DB, { kind: "post", slug, title: newTitle, body: newBody });

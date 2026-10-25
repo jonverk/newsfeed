@@ -47,13 +47,15 @@ You are picking this up cold. Everything below is what you cannot infer from the
 - Markdown: `marked@18` + `highlight.js@11`, raw HTML escaped. Tests: `vitest@^4` + `@cloudflare/vitest-pool-workers@0.23`.
 - Seed = `ORG-001` + placeholder post `the-news-jonverk-newsfeed`. Nothing else invented.
 
-## Traps I already hit or spotted
+## Traps
 
 - `workers/app.ts` imports `virtual:react-router/server-build`, which does **not** resolve under a plain wrangler/vitest-pool build. Plan handles this: test the Hono `api` app via `tests/worker.ts`, and verify HTML pages with `curl` against `npm run dev`. Don't waste an hour trying to make RR pages run under `SELF`.
 - Log filenames are minute-resolution: two tasks in one minute collide. Overwrite; don't accumulate.
-- Keep `PLAN.md` and the canonical plan in sync — I copied once and told the user to say if they edit the root copy.
 - Don't `git add -A`: repo has untracked `.agents/`, `.hermes/`, `.allowlist`, `bun.lock`, `skills-lock.json`, `autonomous-ai-agents-antigravity-cli.md`. Stage specific paths.
-- `git commit` needs `-c user.name=... -c user.email=...` or config may be missing; previous commits used `Jon <jon@jonverk.online>`.
+
+## Not traps
+
+- Log file names are minute-resolution but one task is much longer than a minute. Do not pretend a trap.
 
 ## First moves
 
@@ -61,8 +63,9 @@ You are picking this up cold. Everything below is what you cannot infer from the
 2. Dispatch `agy -p 'Perform Task 1 of PLAN.md exactly …'` with the model/flag above, or do Task 1 inline — but always run the `Review` verification at the boundary.
 3. Log the task either way.
 
-## Open questions for the human (ask, don't assume)
+## Settled questions:
 
-- Install skill scope: currently global; project-local preferred? (One move.)
-- Whether the antigravity skill's `Gemini 3.1 Pro (High)` example should be rewritten to `3.8 Flash (High)` for consistency.
-- Whether they want the CLI published beyond `npm i -g ./cli`.
+- Install skill scope: currently global.
+- The antigravity skill's `Gemini 3.1 Pro (High)` example should be rewritten to `3.8 Flash (High)` for consistency. ONLY use this model!
+- If it is helpful the human wants the CLI published beyond `npm i -g ./cli`.
+

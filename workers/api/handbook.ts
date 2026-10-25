@@ -49,16 +49,15 @@ handbook.put("/:slug", async (c) => {
     if (!rule_id) {
       rule_id = await nextRuleId(c.env.DB, input.category);
     } else {
-      // check prefix matches category? test says "explicit bad rule id" gives 400; also says if prefix doesn't match category - but easier to just assign if creating new with explicit rule_id, validate format
       const { PREFIX_BY_CATEGORY } = await import("../lib/slug");
       const expectedPrefix = PREFIX_BY_CATEGORY[input.category];
-      if (rule_id.split("-")[0] !== expectedPrefix && rule_id) {
-        // be lenient? test says "rejects an unknown category and an explicit bad rule id" - bad rule id format gives 400
+      if (rule_id.split("-")[0] !== expectedPrefix) {
+        return c.json({ message: `rule_id prefix must match category prefix '${expectedPrefix}'`, field: "rule_id" }, 400);
       }
     }
     const effective_at = input.effective_at || ts;
     await c.env.DB
-      .prepare("INSERT INTO rules (rule_id,slug,title,body_md,category,owner,status,effective_at,superseded_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
+      .prepare("INSERT INTO rules (rule_id,slug,title,body_md,category,owner,status,effective_at,superseded_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
       .bind(rule_id, c.req.param("slug"), input.title, input.body, input.category, input.owner || "", "active", effective_at, null, ts, ts)
       .run();
     await indexDocument(c.env.DB, { kind: "rule", slug: c.req.param("slug"), title: input.title, body: input.body });

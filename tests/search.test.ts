@@ -16,6 +16,11 @@ it("never returns drafts", async () => {
   expect(await searchContent(env.DB, "classified")).toEqual([]);
 });
 
+it("returns empty array for empty search queries", async () => {
+  expect(await searchContent(env.DB, "")).toEqual([]);
+  expect(await searchContent(env.DB, "   ")).toEqual([]);
+});
+
 it("escapes fts operators in a query instead of erroring", async () => {
   const res = await SELF.fetch("https://x.test/api/search?q=" + encodeURIComponent('" OR *'));
   expect(res.status).toBe(200);

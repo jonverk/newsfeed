@@ -23,10 +23,16 @@ export async function requireToken(request: Request, env: AppEnv): Promise<Respo
       headers: { "content-type": "application/json" },
     });
   }
-  const auth = request.headers.get("authorization") || "";
-  const expected = "Bearer " + token;
-  const a = await sha256(auth);
-  const b = await sha256(expected);
+  const auth = (request.headers.get("authorization") || "").trim();
+  const match = auth.match(/^bearer\s+(.+)$/i);
+  if (!match) {
+    return new Response(JSON.stringify({ message: "Unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  const a = await sha256(match[1].trim());
+  const b = await sha256(token.trim());
   if (constantTimeEqual(a, b)) {
     return null;
   }

@@ -19,6 +19,9 @@ export async function removeFromIndex(db: D1Database, kind: "post" | "rule", slu
 
 export async function searchContent(db: D1Database, q: string, kind?: "post" | "rule"): Promise<SearchHit[]> {
   const query = (q || "").trim();
+  if (!query) {
+    return [];
+  }
   if (query.length < 2) {
     // fallback to LIKE
     return fallbackSearch(db, query, kind);
@@ -62,6 +65,8 @@ WHERE search_index MATCH ?`;
 }
 
 async function fallbackSearch(db: D1Database, q: string, kind?: "post" | "rule"): Promise<SearchHit[]> {
+  const query = (q || "").trim();
+  if (!query) return [];
   const hits: SearchHit[] = [];
   if (!kind || kind === "post") {
     const { results } = await db.prepare("SELECT slug, title, body_md FROM posts WHERE status = 'published' AND (title LIKE ? OR body_md LIKE ?) LIMIT 20").bind(`%${q}%`, `%${q}%`).all();

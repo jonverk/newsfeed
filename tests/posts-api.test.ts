@@ -24,6 +24,11 @@ it("rejects empty Bearer auth header", async () => {
   expect(res.status).toBe(401);
 });
 
+it("accepts case-insensitive bearer scheme", async () => {
+  const res = await SELF.fetch("https://x.test/api/posts", { method: "POST", headers: { authorization: "bearer test-token", "content-type": "application/json" }, body: JSON.stringify({ title: "Case test", body: "Case test body" }) });
+  expect(res.status).toBe(201);
+});
+
 it("creates a published post and exposes it in the list", async () => {
   const res = await SELF.fetch("https://x.test/api/posts", { method: "POST", headers: auth, body: JSON.stringify({ title: "Blocker cleared", body: "All free to work." }) });
   expect(res.status).toBe(201);

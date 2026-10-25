@@ -35,3 +35,10 @@ it("lists content in llms.txt and includes it in llms-full.txt", async () => {
   const full = await (await SELF.fetch("https://x.test/llms-full.txt")).text();
   expect(full).toContain("Hello **world**.");
 });
+
+it("handles HEAD requests on /llms-full.txt", async () => {
+  const res = await SELF.fetch("https://x.test/llms-full.txt", { method: "HEAD" });
+  expect(res.status).toBe(200);
+  expect(res.headers.get("etag")).toBeTruthy();
+  expect(await res.text()).toBe("");
+});

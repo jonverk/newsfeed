@@ -35,9 +35,8 @@ surfaces.get("/feed.json", async (c) => {
   return conditionalResponse(c.req.raw, body, { contentType: "application/json", updatedAt: updated_at });
 });
 
-surfaces.get("/news/:file", async (c) => {
+surfaces.get("/news/:file{[^/]+\\.md}", async (c) => {
   const file = c.req.param("file");
-  if (!file || !file.endsWith(".md")) return c.json({ message: "Not found" }, 404);
   const slug = file.slice(0, -3);
   const post = await getPublishedPost(c.env.DB, slug);
   if (!post) return c.json({ message: "Not found" }, 404);
@@ -58,9 +57,8 @@ surfaces.get("/news/:file", async (c) => {
   return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: post.updated_at || post.created_at });
 });
 
-surfaces.get("/handbook/:file", async (c) => {
+surfaces.get("/handbook/:file{[^/]+\\.md}", async (c) => {
   const file = c.req.param("file");
-  if (!file || !file.endsWith(".md")) return c.json({ message: "Not found" }, 404);
   const slug = file.slice(0, -3);
   const rule = await getRule(c.env.DB, slug);
   if (!rule || rule.status === "draft") return c.json({ message: "Not found" }, 404);
@@ -197,25 +195,32 @@ surfaces.get("/llms-full.txt", async (c) => {
     return new Response(null, { status: 304, headers });
   }
 
+  if (c.req.method === "HEAD") {
+    return new Response(null, { status: 200, headers });
+  }
+
   // stream-like response
+  let cancelled = false;
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
-      // send in chunks of ~20 docs worth by splitting
-      const parts = out.split("\n\n---\n\n");
       let i = 0;
       const send = () => {
-        if (i >= parts.length) {
+        if (cancelled) return;
+        if (i >= chunks.length) {
           controller.close();
           return;
         }
-        const batch = parts.slice(i, i + 20).join("\n\n---\n\n") + (i + 20 < parts.length ? "\n\n---\n\n" : "");
+        const isLast = i + 20 >= chunks.length;
+        const batch = chunks.slice(i, i + 20).join("\n\n---\n\n") + (isLast ? "" : "\n\n---\n\n");
         controller.enqueue(encoder.encode(batch));
         i += 20;
-        // small delay not needed in workers
         setTimeout(send, 0);
       };
       send();
+    },
+    cancel() {
+      cancelled = true;
     },
   });
 

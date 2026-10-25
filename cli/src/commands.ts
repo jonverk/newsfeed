@@ -12,7 +12,7 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, string
   for (const line of rawYaml.split("\n")) {
     const colon = line.indexOf(":");
     if (colon > 0) {
-      const key = line.slice(0, colon).trim();
+      const key = line.slice(0, colon).trim().toLowerCase();
       let val = line.slice(colon + 1).trim();
       if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
         val = val.slice(1, -1);

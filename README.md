@@ -1,49 +1,54 @@
-# Hono + React Router + Vite + ShadCN UI on Cloudflare Workers
+# JonVerk Newsfeed & Operational Handbook
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/react-router-hono-fullstack-template)
-![Build modern full-stack apps with Hono, React Router, and ShadCN UI on Cloudflare Workers](https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/24c5a7dd-e1e3-43a9-b912-d78d9a4293bc/public)
+Live Production: [https://newsfeed.jonverk.online](https://newsfeed.jonverk.online)
 
-<!-- dash-content-start -->
+The JonVerk Newsfeed is a full-stack, edge-deployed announcement feed, operational handbook, and FAQ designed for human operators, web browsers, and autonomous AI agents.
 
-A modern full-stack template powered by [Cloudflare Workers](https://workers.cloudflare.com/), using [Hono](https://hono.dev/) for backend APIs, [React Router](https://reactrouter.com/) for frontend routing, and [shadcn/ui](https://ui.shadcn.com/) for beautiful, accessible components styled with [Tailwind CSS](https://tailwindcss.com/).
+## Architecture
 
-Built with the [Cloudflare Vite plugin](https://developers.cloudflare.com/workers/vite-plugin/) for optimized static asset delivery and seamless local development. React is configured in single-page app (SPA) mode via Workers.
+- **Runtime & Deployment**: Cloudflare Workers with SSR & static assets via `@cloudflare/vite-plugin`.
+- **Database**: Cloudflare D1 (`d1-db-newsletter` / `39f557f4-a961-428d-814e-36bf90470ff9`) with SQLite FTS5 search index and automated revision tracking.
+- **Backend API**: Hono framework mounted alongside React Router SSR.
+- **Frontend UI**: React 19 + React Router v7 + Tailwind CSS with dark mode support.
+- **Tooling**: Built and verified with `bun` and Vite+ (`vp`).
 
-A perfect starting point for building interactive, styled, and edge-deployed SPAs with minimal configuration.
+## Agent Surfaces & Public Feeds
 
-## Features
+- **JSON Feed 1.1**: [`/feed.json`](https://newsfeed.jonverk.online/feed.json)
+- **LLM Context Files**: [`/llms.txt`](https://newsfeed.jonverk.online/llms.txt) and [`/llms-full.txt`](https://newsfeed.jonverk.online/llms-full.txt)
+- **1:1 Markdown Twins**:
+  - Announcements: `/news/:slug.md` (e.g. [`/news/the-news-jonverk-newsfeed.md`](https://newsfeed.jonverk.online/news/the-news-jonverk-newsfeed.md))
+  - Handbook Rules: `/handbook/:slug.md` (e.g. [`/handbook/strict-logging-protocol.md`](https://newsfeed.jonverk.online/handbook/strict-logging-protocol.md))
+  - Org Chart: [`/org.md`](https://newsfeed.jonverk.online/org.md) and [`/org.mmd`](https://newsfeed.jonverk.online/org.mmd)
+- **Full-Text Search**: [`/api/search?q=<query>`](https://newsfeed.jonverk.online/api/search?q=logging) and web UI at [`/search`](https://newsfeed.jonverk.online/search).
 
-- ⚡ Full-stack app on Cloudflare Workers
-- 🔁 Hono for backend API endpoints
-- 🧭 React Router for client-side routing
-- 🎨 ShadCN UI with Tailwind CSS for components and styling
-- 🧱 File-based route separation
-- 🚀 Zero-config Vite build for Workers
-- 🛠️ Automatically deploys with Wrangler
-- 🔎 Built-in Observability to monitor your Worker
-<!-- dash-content-end -->
+## Handbook & FAQ
 
-## Tech Stack
+- Canonical rule identifiers follow `RULE-NNN` or `ORG-NNN`.
+- In-place modifications append to the `revisions` audit log.
+- Deprecated policies are explicitly superseded via the `/supersede` API endpoint and highlighted in the UI.
 
-- **Frontend**: React + React Router + ShadCN UI
-  - SPA architecture powered by React Router
-  - Includes accessible, themeable UI from ShadCN
-  - Styled with utility-first Tailwind CSS
-  - Built and optimized with Vite
+## Newsfeed CLI
 
-- **Backend**: Hono on Cloudflare Workers
-  - API routes defined and handled via Hono in `/api/*`
-  - Supports REST-like endpoints, CORS, and middleware
+Publish posts and manage handbook rules directly from your terminal:
 
-- **Deployment**: Cloudflare Workers via Wrangler
-  - Vite plugin auto-bundles frontend and backend together
-  - Deployed worldwide on Cloudflare’s edge network
+```bash
+# Build CLI
+bun --cwd cli run build
 
-## Resources
+# View feed
+./cli/dist/bin.js feed
 
-- 🧩 [Hono on Cloudflare Workers](https://hono.dev/docs/getting-started/cloudflare-workers)
-- 📦 [Vite Plugin for Cloudflare](https://developers.cloudflare.com/workers/vite-plugin/)
-- 🛠 [Wrangler CLI reference](https://developers.cloudflare.com/workers/wrangler/)
-- 🎨 [shadcn/ui](https://ui.shadcn.com)
-- 💨 [Tailwind CSS Documentation](https://tailwindcss.com/)
-- 🔀 [React Router Docs](https://reactrouter.com/)
+# Search
+./cli/dist/bin.js search "protocol"
+
+# Create announcement (requires NEWSFEED_TOKEN)
+export NEWSFEED_TOKEN="<token>"
+./cli/dist/bin.js post create ./announcement.md --kind milestone
+```
+
+See [cli/README.md](cli/README.md) for full CLI documentation.
+
+## Deployment & Operations
+
+Refer to [docs/runbooks/newsfeed-deploy.md](docs/runbooks/newsfeed-deploy.md) for detailed deployment steps, D1 migrations, and verification procedures.

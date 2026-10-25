@@ -1,0 +1,20 @@
+{
+  "name": "newsfeed-cli",
+  "version": "1.0.0",
+  "description": "CLI client for JonVerk Newsfeed and Operational Handbook",
+  "type": "module",
+  "main": "dist/client.js",
+  "types": "dist/client.d.ts",
+  "bin": {
+    "newsfeed": "dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.12"
+  }
+}

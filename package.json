@@ -42,6 +42,7 @@
 	"private": true,
 	"scripts": {
 		"build": "react-router build",
+		"build:cli": "tsc -p cli/tsconfig.json",
 		"cf-typegen": "wrangler types",
 		"deploy": "npm run build && wrangler deploy",
 		"dev": "react-router dev",

@@ -92,6 +92,7 @@ surfaces.get("/org.md", async (c) => {
     return (results && results[0]) as any;
   })()));
   const ruleObj = rule || r;
+  if (!ruleObj || ruleObj.status === "draft") return c.json({ message: "Not found" }, 404);
   const doc = toMarkdownDocument({
     frontmatter: {
       title: ruleObj.title,

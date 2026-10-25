@@ -54,6 +54,10 @@ handbook.put("/:slug", async (c) => {
       if (rule_id.split("-")[0] !== expectedPrefix) {
         return c.json({ message: `rule_id prefix must match category prefix '${expectedPrefix}'`, field: "rule_id" }, 400);
       }
+      const existing = await c.env.DB.prepare("SELECT 1 FROM rules WHERE rule_id = ?").bind(rule_id).all();
+      if (existing.results && existing.results.length > 0) {
+        return c.json({ message: `rule_id '${rule_id}' already exists`, field: "rule_id" }, 400);
+      }
     }
     const effective_at = input.effective_at || ts;
     await c.env.DB

@@ -54,7 +54,7 @@ posts.post("/", async (c) => {
   const status = isDraft ? "draft" : "published";
   const published_at = isDraft ? null : ts;
 
-  await c.env.DB
+  const info = await c.env.DB
     .prepare("INSERT INTO posts (slug,title,body_md,kind,author,status,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
     .bind(slugToUse, input.title, input.body, input.kind || "announcement", input.author || "Jon", status, published_at, ts, ts)
     .run();
@@ -65,7 +65,8 @@ posts.post("/", async (c) => {
     } catch {}
   }
 
-  const res = { slug: slugToUse, url: `/news/${slugToUse}`, md_url: `/news/${slugToUse}.md`, id: 0 };
+  const id = info.meta?.last_row_id ?? 0;
+  const res = { slug: slugToUse, url: `/news/${slugToUse}`, md_url: `/news/${slugToUse}.md`, id };
   const resBody = JSON.stringify(res);
   if (idemKey) {
     await c.env.DB.prepare("INSERT OR REPLACE INTO idempotency (key,status,body,created_at) VALUES (?,?,?,?)").bind(idemKey, 201, resBody, ts).run();

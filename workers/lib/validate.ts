@@ -1,7 +1,7 @@
 import type { PostKind, Category } from "./content";
 
 const POST_KINDS: PostKind[] = ["announcement", "milestone", "kudos"];
-const CATEGORIES: Category[] = ["rules", "org", "logging", "verification", "process", "other"];
+const CATEGORIES: Category[] = ["rules", "org", "logging", "verification", "process", "faq", "other"];
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,80}$/;
 const RULE_ID_RE = /^[A-Z]{2,6}-\d{3}$/;
 

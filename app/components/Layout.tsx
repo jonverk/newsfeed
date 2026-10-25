@@ -21,6 +21,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 						<Link to="/handbook" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
 							Handbook
 						</Link>
+						<Link to="/faq" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+							FAQ
+						</Link>
 						<Link to="/org" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
 							Org
 						</Link>

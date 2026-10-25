@@ -1,5 +1,5 @@
 export type PostKind = "announcement" | "milestone" | "kudos";
-export type Category = "rules" | "org" | "logging" | "verification" | "process" | "other";
+export type Category = "rules" | "org" | "logging" | "verification" | "process" | "faq" | "other";
 export type PostStatus = "draft" | "published";
 export type RuleStatus = "active" | "superseded" | "draft";
 

@@ -23,6 +23,7 @@ const CATEGORY_NAMES: Record<string, string> = {
 	logging: "Logging & Observability",
 	verification: "Verification & Quality Gates",
 	process: "Operational Processes",
+	faq: "Frequently Asked Questions (FAQ)",
 	other: "Miscellaneous Policies",
 };
 

@@ -66,16 +66,27 @@ WHERE search_index MATCH ?`;
 
 async function fallbackSearch(db: D1Database, q: string, kind?: "post" | "rule"): Promise<SearchHit[]> {
   const query = (q || "").trim();
-  if (!query) return [];
+  const stripped = query.replace(/[%_\s\\]/g, "");
+  if (!stripped) return [];
+
+  const escaped = query.replace(/[\\%_]/g, "\\$&");
+  const pattern = `%${escaped}%`;
+
   const hits: SearchHit[] = [];
   if (!kind || kind === "post") {
-    const { results } = await db.prepare("SELECT slug, title, body_md FROM posts WHERE status = 'published' AND (title LIKE ? OR body_md LIKE ?) LIMIT 20").bind(`%${q}%`, `%${q}%`).all();
+    const { results } = await db
+      .prepare("SELECT slug, title, body_md FROM posts WHERE status = 'published' AND (title LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\') LIMIT 20")
+      .bind(pattern, pattern)
+      .all();
     for (const r of (results || []) as any[]) {
       hits.push({ kind: "post", slug: r.slug, title: r.title, snippet: "", url: `/news/${r.slug}`, md_url: `/news/${r.slug}.md` });
     }
   }
   if (!kind || kind === "rule") {
-    const { results } = await db.prepare("SELECT slug, title, body_md FROM rules WHERE status IN ('active','superseded') AND (title LIKE ? OR body_md LIKE ?) LIMIT 20").bind(`%${q}%`, `%${q}%`).all();
+    const { results } = await db
+      .prepare("SELECT slug, title, body_md FROM rules WHERE status IN ('active','superseded') AND (title LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\') LIMIT 20")
+      .bind(pattern, pattern)
+      .all();
     for (const r of (results || []) as any[]) {
       hits.push({ kind: "rule", slug: r.slug, title: r.title, snippet: "", url: `/handbook/${r.slug}`, md_url: `/handbook/${r.slug}.md` });
     }

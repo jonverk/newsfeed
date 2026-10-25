@@ -200,27 +200,18 @@ surfaces.get("/llms-full.txt", async (c) => {
   }
 
   // stream-like response
-  let cancelled = false;
+  let i = 0;
+  const encoder = new TextEncoder();
   const stream = new ReadableStream({
-    start(controller) {
-      const encoder = new TextEncoder();
-      let i = 0;
-      const send = () => {
-        if (cancelled) return;
-        if (i >= chunks.length) {
-          controller.close();
-          return;
-        }
-        const isLast = i + 20 >= chunks.length;
-        const batch = chunks.slice(i, i + 20).join("\n\n---\n\n") + (isLast ? "" : "\n\n---\n\n");
-        controller.enqueue(encoder.encode(batch));
-        i += 20;
-        setTimeout(send, 0);
-      };
-      send();
-    },
-    cancel() {
-      cancelled = true;
+    pull(controller) {
+      if (i >= chunks.length) {
+        controller.close();
+        return;
+      }
+      const isLast = i + 20 >= chunks.length;
+      const batch = chunks.slice(i, i + 20).join("\n\n---\n\n") + (isLast ? "" : "\n\n---\n\n");
+      controller.enqueue(encoder.encode(batch));
+      i += 20;
     },
   });
 

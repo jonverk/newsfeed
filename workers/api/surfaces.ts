@@ -111,6 +111,19 @@ surfaces.get("/org.md", async (c) => {
   return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: ruleObj.updated_at || ruleObj.created_at });
 });
 
+surfaces.get("/org.mmd", async (c) => {
+  const rule = await getRule(c.env.DB, "org-chart");
+  const r = rule || ((await (async () => {
+    const { results } = await c.env.DB.prepare("SELECT * FROM rules WHERE rule_id = ? OR slug = ?").bind("ORG-001", "org-chart").all();
+    return (results && results[0]) as any;
+  })()));
+  const ruleObj = rule || r;
+  if (!ruleObj || ruleObj.status === "draft") return c.json({ message: "Not found" }, 404);
+  const match = ruleObj.body_md.match(/```mermaid\s*([\s\S]*?)```/);
+  const mmd = match ? match[1].trim() : ruleObj.body_md;
+  return conditionalResponse(c.req.raw, mmd, { contentType: "text/plain; charset=utf-8", updatedAt: ruleObj.updated_at || ruleObj.created_at });
+});
+
 surfaces.get("/llms.txt", async (c) => {
   const posts = await listPublishedPosts(c.env.DB, { limit: 20 });
   const rules = await listRules(c.env.DB);

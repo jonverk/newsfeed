@@ -1,8 +1,8 @@
-# JonVerk Newsfeed & Operational Handbook
+# JonVerk Newsfeed & Operational Rules
 
 Live Production: [https://newsfeed.jonverk.online](https://newsfeed.jonverk.online)
 
-The JonVerk Newsfeed is a full-stack, edge-deployed announcement feed, operational handbook, and FAQ designed for human operators, web browsers, and autonomous AI agents.
+The JonVerk Newsfeed is a full-stack, edge-deployed newsfeed and operational rules site designed for human operators, web browsers, and autonomous AI agents.
 
 ## Architecture
 
@@ -12,17 +12,27 @@ The JonVerk Newsfeed is a full-stack, edge-deployed announcement feed, operation
 - **Frontend UI**: React 19 + React Router v7 + Tailwind CSS with dark mode support.
 - **Tooling**: Built and verified with `bun` and Vite+ (`vp`).
 
+## Browser administration (V2)
+
+Log in at [`/login`](https://newsfeed.jonverk.online/login) to manage news, operational rules, and org uploads at `/admin`. The editor uses plain Markdown without a preview. News supports drafts and publishing; operational rules and org saves take effect immediately. Deleted entries move into private trash and can be restored.
+
+One administrator is configured through the `ADMIN_USERNAME` and `ADMIN_PASSWORD` Worker secrets. Existing CLI access through `NEWSFEED_TOKEN` continues to work. See [browser administration setup and release instructions](docs/runbooks/browser-admin.md), including migration, credential rotation, verification, and rollback requirements.
+
+The upgrade preserves the existing placeholder content. It does not make that text authoritative or apply its instructions as policy.
+
+The public navigation is **Newsfeed**, **Rules**, **Org**, **Projects**, **Search**, and **Log in**. Operational Rules live at `/rules`; `/handbook` and `/faq` redirect there. Rule pages and Markdown exports use `/rules/:slug` and `/rules/:slug.md`. Existing Markdown and write API clients retain their compatibility aliases. Projects links to `https://projects.jonverk.online`.
+
 ## Agent Surfaces & Public Feeds
 
 - **JSON Feed 1.1**: [`/feed.json`](https://newsfeed.jonverk.online/feed.json)
 - **LLM Context Files**: [`/llms.txt`](https://newsfeed.jonverk.online/llms.txt) and [`/llms-full.txt`](https://newsfeed.jonverk.online/llms-full.txt)
 - **1:1 Markdown Twins**:
-  - Announcements: `/news/:slug.md` (e.g. [`/news/the-news-jonverk-newsfeed.md`](https://newsfeed.jonverk.online/news/the-news-jonverk-newsfeed.md))
-  - Handbook Rules: `/handbook/:slug.md` (e.g. [`/handbook/strict-logging-protocol.md`](https://newsfeed.jonverk.online/handbook/strict-logging-protocol.md))
+  - Newsfeed: `/news/:slug.md` (e.g. [`/news/the-news-jonverk-newsfeed.md`](https://newsfeed.jonverk.online/news/the-news-jonverk-newsfeed.md))
+  - Operational Rules: `/rules/:slug.md` (e.g. [`/rules/strict-logging-protocol.md`](https://newsfeed.jonverk.online/rules/strict-logging-protocol.md))
   - Org Chart: [`/org.md`](https://newsfeed.jonverk.online/org.md) and [`/org.mmd`](https://newsfeed.jonverk.online/org.mmd)
 - **Full-Text Search**: [`/api/search?q=<query>`](https://newsfeed.jonverk.online/api/search?q=logging) and web UI at [`/search`](https://newsfeed.jonverk.online/search).
 
-## Handbook & FAQ
+## Operational Rules
 
 - Canonical rule identifiers follow `RULE-NNN` or `ORG-NNN`.
 - In-place modifications append to the `revisions` audit log.
@@ -30,7 +40,7 @@ The JonVerk Newsfeed is a full-stack, edge-deployed announcement feed, operation
 
 ## Newsfeed CLI
 
-Publish posts and manage handbook rules directly from your terminal:
+Publish posts and manage operational rules directly from your terminal:
 
 ```bash
 # Build CLI

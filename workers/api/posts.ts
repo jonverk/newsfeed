@@ -1,77 +1,45 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../lib/env";
-import { requireToken } from "../lib/auth";
+import { requireToken, writer, PRIVATE_CACHE } from "../lib/auth";
 import { validatePostInput } from "../lib/validate";
 import { slugify } from "../lib/slug";
 import { getPostForAdmin, getPublishedPost, listPublishedPosts } from "../lib/content";
-import { indexDocument, removeFromIndex } from "../lib/search";
+import { indexStatements, mutateContent, publicChange } from "../lib/mutations";
+import { registerTrashRoutes } from "./trash";
 
 export const posts = new Hono<{ Bindings: AppEnv }>();
-
-function nowIso() {
-  return new Date().toISOString();
-}
 
 posts.post("/", async (c) => {
   const auth = await requireToken(c.req.raw, c.env);
   if (auth) return auth;
-
-  // idempotency
   const idemKey = c.req.header("idempotency-key");
   if (idemKey) {
-    const existing = await c.env.DB.prepare("SELECT status, body FROM idempotency WHERE key = ?").bind(idemKey).first();
-    if (existing) {
-      return new Response(existing.body as string, { status: existing.status as number, headers: { "content-type": "application/json" } });
-    }
+    const existing = await c.env.DB.prepare("SELECT status, body FROM idempotency WHERE key = ?").bind(idemKey).first<{ status: number; body: string }>();
+    if (existing) return new Response(existing.body, { status: existing.status, headers: { "Content-Type": "application/json", "Cache-Control": PRIVATE_CACHE } });
   }
-
-  let body: any;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ message: "Invalid JSON", field: "body" }, 400);
+  let body: unknown;
+  try { body = await c.req.json(); } catch { return c.json({ message: "Invalid JSON", field: "body" }, 400); }
+  const validation = validatePostInput(body);
+  if (!validation.ok) return c.json({ message: validation.message, field: validation.field }, 400);
+  const input = validation.value;
+  const base = input.slug || slugify(input.title);
+  let slug = base;
+  for (let suffix = 2; await getPostForAdmin(c.env.DB, slug); suffix++) {
+    if (suffix > 1000) return c.json({ message: "Choose a different title or slug", field: "slug" }, 409);
+    const ending = `-${suffix}`;
+    slug = `${base.slice(0, 81 - ending.length).replace(/-+$/, "")}${ending}`;
   }
-
-  const v = validatePostInput(body);
-  if (!v.ok) {
-    return c.json({ message: v.message, field: v.field }, 400);
-  }
-  const input = v.value;
-
-  let slug = input.slug || slugify(input.title);
-  // ensure unique
-  let slugToUse = slug;
-  let n = 2;
-  while (true) {
-    const existing = await getPostForAdmin(c.env.DB, slugToUse);
-    if (!existing) break;
-    slugToUse = `${slug}-${n++}`;
-    if (n > 100) break;
-  }
-
-  const ts = nowIso();
-  const isDraft = input.draft === true;
-  const status = isDraft ? "draft" : "published";
-  const published_at = isDraft ? null : ts;
-
-  const info = await c.env.DB
-    .prepare("INSERT INTO posts (slug,title,body_md,kind,author,status,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
-    .bind(slugToUse, input.title, input.body, input.kind || "announcement", input.author || "Jon", status, published_at, ts, ts)
-    .run();
-
-  if (!isDraft) {
-    try {
-      await indexDocument(c.env.DB, { kind: "post", slug: slugToUse, title: input.title, body: input.body });
-    } catch {}
-  }
-
-  const id = info.meta?.last_row_id ?? 0;
-  const res = { slug: slugToUse, url: `/news/${slugToUse}`, md_url: `/news/${slugToUse}.md`, id };
-  const resBody = JSON.stringify(res);
-  if (idemKey) {
-    await c.env.DB.prepare("INSERT OR REPLACE INTO idempotency (key,status,body,created_at) VALUES (?,?,?,?)").bind(idemKey, 201, resBody, ts).run();
-  }
-  return c.json(res, 201);
+  const ts = new Date().toISOString();
+  const draft = input.draft === true;
+  const statements = [c.env.DB.prepare("INSERT INTO posts (slug,title,body_md,kind,author,status,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
+    .bind(slug, input.title, input.body, input.kind || "announcement", input.author ?? "Jon", draft ? "draft" : "published", draft ? null : ts, ts, ts),
+    ...indexStatements(c.env.DB, "post", slug)];
+  if (!draft) statements.push(publicChange(c.env.DB, ts));
+  // Keep creation and the idempotency result atomic, including the generated ID.
+  if (idemKey) statements.push(c.env.DB.prepare(`INSERT INTO idempotency (key,status,body,created_at)
+    SELECT ?,201,json_object('slug',slug,'url','/news/'||slug,'md_url','/news/'||slug||'.md','id',id),? FROM posts WHERE slug = ?`).bind(idemKey, ts, slug));
+  const results = await c.env.DB.batch(statements);
+  return c.json({ slug, url: `/news/${slug}`, md_url: `/news/${slug}.md`, id: results[0].meta.last_row_id }, 201);
 });
 
 posts.post("/:slug/publish", async (c) => {
@@ -79,14 +47,11 @@ posts.post("/:slug/publish", async (c) => {
   if (auth) return auth;
   const slug = c.req.param("slug");
   const post = await getPostForAdmin(c.env.DB, slug);
-  if (!post) return c.json({ message: "Not found" }, 404);
-  if (post.status === "published") {
-    await indexDocument(c.env.DB, { kind: "post", slug, title: post.title, body: post.body_md });
-    return c.json({ ok: true });
-  }
-  const ts = nowIso();
-  await c.env.DB.prepare("UPDATE posts SET status='published', published_at = COALESCE(published_at, ?), updated_at = ? WHERE slug = ?").bind(ts, ts, slug).run();
-  await indexDocument(c.env.DB, { kind: "post", slug, title: post.title, body: post.body_md });
+  if (!post || post.deleted_at) return c.json({ message: "Not found" }, 404);
+  const ts = new Date().toISOString();
+  await mutateContent(c.env.DB, "post", slug, (await writer(c.req.raw, c.env))!, c.env.DB.prepare(
+    "UPDATE posts SET status='published', published_at=COALESCE(published_at,?), updated_at=? WHERE slug=? AND deleted_at IS NULL",
+  ).bind(ts, ts, slug), { revision: post.status !== "published" });
   return c.json({ ok: true });
 });
 
@@ -95,75 +60,44 @@ posts.patch("/:slug", async (c) => {
   if (auth) return auth;
   const slug = c.req.param("slug");
   const post = await getPostForAdmin(c.env.DB, slug);
-  if (!post) return c.json({ message: "Not found" }, 404);
-  let body: any;
+  if (!post || post.deleted_at) return c.json({ message: "Not found" }, 404);
+  let body: Record<string, unknown>;
   try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ message: "Invalid JSON", field: "body" }, 400);
-  }
-  if (typeof body.title === "string") {
-    if (body.title.trim() === "") {
-      return c.json({ message: "title cannot be empty", field: "title" }, 400);
-    }
-    if (/[\r\n]/.test(body.title)) {
-      return c.json({ message: "newlines not allowed in title", field: "title" }, 400);
-    }
-    if (body.title.length > 120) {
-      return c.json({ message: "title too long", field: "title" }, 400);
-    }
-  }
-  if (typeof body.body === "string" && body.body.length > 65536) {
-    return c.json({ message: "body too large", field: "body" }, 400);
-  }
-  const ts = nowIso();
-  // save revision
-  await c.env.DB.prepare("INSERT INTO revisions (entity_type,entity_ref,title,body_md,saved_at,saved_by) VALUES (?,?,?,?,?,?)")
-    .bind("post", slug, post.title, post.body_md, ts, "")
-    .run();
-  const newTitle = typeof body.title === "string" ? body.title : post.title;
-  const newBody = typeof body.body === "string" ? body.body : post.body_md;
-  await c.env.DB.prepare("UPDATE posts SET title=?, body_md=?, updated_at=? WHERE slug = ?").bind(newTitle, newBody, ts, slug).run();
-  if (post.status === "published") {
-    await indexDocument(c.env.DB, { kind: "post", slug, title: newTitle, body: newBody });
-  } else {
-    await removeFromIndex(c.env.DB, "post", slug);
-  }
+    const value: unknown = await c.req.json();
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
+    body = value as Record<string, unknown>;
+  } catch { return c.json({ message: "Invalid JSON", field: "body" }, 400); }
+  if (body.slug !== undefined && body.slug !== slug) return c.json({ message: "slug is immutable", field: "slug" }, 400);
+  const validation = validatePostInput({ title: post.title, body: post.body_md, kind: post.kind, author: post.author, ...body });
+  if (!validation.ok) return c.json({ message: validation.message, field: validation.field }, 400);
+  const value = validation.value;
+  await mutateContent(c.env.DB, "post", slug, (await writer(c.req.raw, c.env))!, c.env.DB.prepare(
+    "UPDATE posts SET title=?,body_md=?,kind=?,author=?,updated_at=? WHERE slug=? AND deleted_at IS NULL",
+  ).bind(value.title, value.body, value.kind, value.author, new Date().toISOString(), slug), { public: post.status === "published" });
   return c.json({ ok: true });
 });
+
+registerTrashRoutes(posts, "post");
 
 posts.get("/", async (c) => {
   const status = c.req.query("status");
   if (status && status !== "published") {
     const auth = await requireToken(c.req.raw, c.env);
     if (auth) return auth;
-    // return drafts
-    const { results } = await c.env.DB.prepare("SELECT id, slug, title, body_md, kind, author, status, published_at, created_at, updated_at FROM posts WHERE status = ? ORDER BY created_at DESC").bind(status).all();
-    return c.json({ items: results || [] });
+    if (status !== "draft") return c.json({ message: "Invalid status", field: "status" }, 400);
+    c.header("Cache-Control", PRIVATE_CACHE);
+    const { results } = await c.env.DB.prepare("SELECT * FROM posts WHERE status=? AND deleted_at IS NULL ORDER BY created_at DESC").bind(status).all();
+    return c.json({ items: results });
   }
-  const posts = await listPublishedPosts(c.env.DB);
-  return c.json({ items: posts });
+  return c.json({ items: await listPublishedPosts(c.env.DB) });
 });
 
 posts.get("/:slug", async (c) => {
   const slug = c.req.param("slug");
-  const pub = await getPublishedPost(c.env.DB, slug);
-  if (pub) return c.json(pub);
-  const admin = await getPostForAdmin(c.env.DB, slug);
-  if (!admin) return c.json({ message: "Not found" }, 404);
-  if (admin.status === "draft") {
-    const authCheck = await requireToken(c.req.raw, c.env);
-    if (authCheck) {
-      // requireToken returns null if valid, else Response(401)
-      // but spec says "keeps drafts out of public reads and 404s their slug"
-      // if no valid token, return 404
-      return c.json({ message: "Not found" }, 404);
-    }
-    return c.json(admin);
-  }
-  const authCheck = await requireToken(c.req.raw, c.env);
-  if (authCheck) {
-    return c.json({ message: "Not found" }, 404);
-  }
-  return c.json(admin);
+  const published = await getPublishedPost(c.env.DB, slug);
+  if (published) return c.json(published);
+  const post = await getPostForAdmin(c.env.DB, slug);
+  if (!post || post.deleted_at || await requireToken(c.req.raw, c.env)) return c.json({ message: "Not found" }, 404);
+  c.header("Cache-Control", PRIVATE_CACHE);
+  return c.json(post);
 });

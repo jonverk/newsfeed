@@ -1,6 +1,8 @@
 # Newsfeed Deployment Runbook
 
-This runbook covers how to develop, test, migrate, and deploy the JonVerk Newsfeed & Operational Handbook (`newsfeed.jonverk.online`).
+This runbook covers how to develop, test, migrate, and deploy the JonVerk Newsfeed & Operational Rules (`newsfeed.jonverk.online`).
+
+For V2, also follow [Browser administration](browser-admin.md) for the new credentials, schema migration, and trash-aware rollback requirements.
 
 ## Prerequisites
 
@@ -57,8 +59,7 @@ Verify endpoints using curl:
 # Public HTML pages
 curl -I https://newsfeed.jonverk.online/
 curl -I https://newsfeed.jonverk.online/news
-curl -I https://newsfeed.jonverk.online/handbook
-curl -I https://newsfeed.jonverk.online/faq
+curl -I https://newsfeed.jonverk.online/rules
 curl -I https://newsfeed.jonverk.online/org
 
 # Agent feeds & markdown twins

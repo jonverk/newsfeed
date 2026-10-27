@@ -1,5 +1,26 @@
 @import "tailwindcss" source(".");
 
+.admin-form label { display: block; font-size: 0.875rem; font-weight: 500; }
+.admin-form > label + label { margin-top: 1.25rem; }
+.admin-form input, .admin-form select, .admin-form textarea {
+	display: block; width: 100%; margin-top: 0.5rem; padding: 0.65rem 0.75rem;
+	border: 1px solid var(--border); border-radius: 0.25rem; background: var(--bg); color: var(--text);
+}
+.admin-form input:focus, .admin-form select:focus, .admin-form textarea:focus {
+	outline: 2px solid var(--text); outline-offset: 2px;
+}
+.admin-form textarea { resize: vertical; }
+.admin-form fieldset:disabled { opacity: 0.65; }
+.admin-button {
+	display: inline-block; padding: 0.65rem 1rem; border-radius: 0.25rem;
+	background: var(--text); color: var(--bg); font-size: 0.875rem; font-weight: 500; cursor: pointer;
+}
+.admin-form > .admin-button, .admin-form > .admin-error { margin-top: 1.25rem; }
+.admin-button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.admin-button:disabled { opacity: 0.5; cursor: wait; }
+.admin-error { color: #b91c1c; margin: 1rem 0; font-size: 0.875rem; }
+@media (prefers-color-scheme: dark) { .admin-error { color: #fca5a5; } }
+
 @theme {
 	--font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 	--font-serif: "Newsreader", Georgia, Cambria, "Times New Roman", Times, serif;

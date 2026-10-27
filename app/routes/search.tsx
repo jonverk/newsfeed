@@ -6,7 +6,7 @@ import { searchContent, type SearchHit } from "../../workers/lib/search";
 export function meta() {
 	return [
 		{ title: "Search — JonVerk Newsfeed" },
-		{ name: "description", content: "Search across announcements and handbook rules." },
+		{ name: "description", content: "Search across the newsfeed and operational rules." },
 	];
 }
 

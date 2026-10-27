@@ -6,7 +6,7 @@ import { deriveSummary } from "../../workers/lib/render";
 
 export function meta() {
 	return [
-		{ title: "JonVerk — Newsfeed & Operational Handbook" },
+		{ title: "JonVerk — Newsfeed & Operational Rules" },
 		{ name: "description", content: "Operational updates, decisions, and system notices." },
 	];
 }
@@ -52,7 +52,7 @@ export default function Home() {
 					<input
 						type="search"
 						name="q"
-						placeholder="Search announcements and handbook rules..."
+						placeholder="Search the newsfeed and operational rules..."
 						className="flex-1 px-3 py-2 text-sm rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-500"
 					/>
 					<button
@@ -67,7 +67,7 @@ export default function Home() {
 			<section className="mb-16">
 				<div className="flex items-baseline justify-between mb-6 pb-2 border-b border-neutral-200 dark:border-neutral-800">
 					<h2 className="text-xl font-serif font-bold text-neutral-900 dark:text-neutral-100">
-						Recent Announcements
+						Recent Newsfeed Entries
 					</h2>
 					<Link to="/news" className="text-xs font-mono text-neutral-500 dark:text-neutral-400 hover:underline">
 						View archive &rarr;
@@ -75,7 +75,7 @@ export default function Home() {
 				</div>
 
 				{posts.length === 0 ? (
-					<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No published announcements yet.</p>
+					<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No published newsfeed entries yet.</p>
 				) : (
 					<div className="space-y-8">
 						{posts.map((post) => (
@@ -102,21 +102,21 @@ export default function Home() {
 			<section>
 				<div className="flex items-baseline justify-between mb-6 pb-2 border-b border-neutral-200 dark:border-neutral-800">
 					<h2 className="text-xl font-serif font-bold text-neutral-900 dark:text-neutral-100">
-						Operational Handbook & FAQ
+						Operational Rules
 					</h2>
-					<Link to="/handbook" className="text-xs font-mono text-neutral-500 dark:text-neutral-400 hover:underline">
+					<Link to="/rules" className="text-xs font-mono text-neutral-500 dark:text-neutral-400 hover:underline">
 						All rules &rarr;
 					</Link>
 				</div>
 
 				{rules.length === 0 ? (
-					<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No active handbook rules seeded yet.</p>
+					<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No active operational rules yet.</p>
 				) : (
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						{rules.slice(0, 8).map((rule) => (
 							<Link
 								key={rule.rule_id}
-								to={`/handbook/${rule.slug}`}
+								to={`/rules/${rule.slug}`}
 								className="block p-3 rounded border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 bg-white/50 dark:bg-neutral-900/50"
 							>
 								<div className="flex items-center gap-2 mb-1">

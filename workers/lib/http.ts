@@ -21,7 +21,7 @@ export async function conditionalResponse(
   if (init.updatedAt) {
     headers.set("Last-Modified", new Date(init.updatedAt).toUTCString());
   }
-  headers.set("Cache-Control", headers.get("Cache-Control") || "public, max-age=60, stale-while-revalidate=300");
+  headers.set("Cache-Control", headers.get("Cache-Control") || "public, no-cache");
 
   const ifNone = request.headers.get("if-none-match");
   if (ifNone && ifNone.includes(etag)) {

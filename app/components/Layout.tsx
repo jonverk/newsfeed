@@ -1,35 +1,34 @@
 import React from "react";
-import { Link, Form } from "react-router";
+import { Link } from "react-router";
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
 		<div className="min-h-screen flex flex-col max-w-3xl mx-auto px-4 sm:px-6">
 			<header className="py-8 border-b border-neutral-200 dark:border-neutral-800">
-				<div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
+				<div className="flex flex-col gap-4">
 					<div>
 						<Link to="/" className="text-2xl font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100 hover:opacity-90">
 							JonVerk
 						</Link>
 						<span className="ml-2 text-xs font-mono uppercase tracking-widest text-neutral-500 dark:text-neutral-400">
-							Newsfeed & Handbook
+							Newsfeed & Operational Rules
 						</span>
 					</div>
-					<nav className="flex items-center gap-5 text-sm font-medium">
+					<nav aria-label="Main navigation" className="flex flex-wrap items-center gap-5 text-sm font-medium">
 						<Link to="/news" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-							Announcements
+							Newsfeed
 						</Link>
-						<Link to="/handbook" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-							Handbook
-						</Link>
-						<Link to="/faq" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-							FAQ
+						<Link to="/rules" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+							Rules
 						</Link>
 						<Link to="/org" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
 							Org
 						</Link>
+						<a href="https://projects.jonverk.online" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">Projects</a>
 						<Link to="/search" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
 							Search
 						</Link>
+						<Link to="/login" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">Log in</Link>
 					</nav>
 				</div>
 			</header>

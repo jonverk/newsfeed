@@ -7,6 +7,9 @@
 	"name": "newsfeed",
 	"compatibility_date": "2025-10-08",
 	"main": "./workers/app.ts",
+	"ratelimits": [
+		{ "name": "LOGIN_RATE_LIMITER", "namespace_id": "108271", "simple": { "limit": 5, "period": 60 } }
+	],
 	"vars": {
 		"VALUE_FROM_CLOUDFLARE": "Hello from Hono/CF"
 	},

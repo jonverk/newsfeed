@@ -79,7 +79,7 @@ export async function handleRuleSet(client: NewsfeedClient, args: {
     owner,
     rule_id,
   });
-  console.log(`Rule updated/created: ${res.rule_id} -> /handbook/${res.slug}`);
+  console.log(`Rule updated/created: ${res.rule_id} -> /rules/${res.slug}`);
   return res;
 }
 

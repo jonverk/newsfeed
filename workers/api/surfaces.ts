@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../lib/env";
-import { listPublishedPosts, getPublishedPost, listRules, getRule } from "../lib/content";
+import { listPublishedPosts, getPublishedPost, listRules, getRule, getOrgRule, getPublicState } from "../lib/content";
 import { deriveSummary, toMarkdownDocument } from "../lib/render";
 import { conditionalResponse, etagFor } from "../lib/http";
 
@@ -30,7 +30,7 @@ surfaces.get("/feed.json", async (c) => {
     url: `/news/${p.slug}`,
     md_url: `/news/${p.slug}.md`,
   }));
-  const updated_at = posts[0]?.updated_at || nowIso();
+  const updated_at = (await getPublicState(c.env.DB)).changed_at;
   const body = JSON.stringify({ version: 1, updated_at, items }, null, 0);
   return conditionalResponse(c.req.raw, body, { contentType: "application/json", updatedAt: updated_at });
 });
@@ -57,8 +57,8 @@ surfaces.get("/news/:file{[^/]+\\.md}", async (c) => {
   return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: post.updated_at || post.created_at });
 });
 
-surfaces.get("/handbook/:file{[^/]+\\.md}", async (c) => {
-  const file = c.req.param("file");
+surfaces.on("GET", ["/rules/:file{[^/]+\\.md}", "/handbook/:file{[^/]+\\.md}"], async (c) => {
+  const file = c.req.param("file")!;
   const slug = file.slice(0, -3);
   const rule = await getRule(c.env.DB, slug);
   if (!rule || rule.status === "draft") return c.json({ message: "Not found" }, 404);
@@ -73,26 +73,24 @@ surfaces.get("/handbook/:file{[^/]+\\.md}", async (c) => {
       effective_at: rule.effective_at,
       updated_at: rule.updated_at,
       superseded_by: rule.superseded_by,
-      canonical: `/handbook/${rule.slug}`,
+      canonical: `/rules/${rule.slug}`,
     },
     body: rule.body_md,
   });
   return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: rule.updated_at || rule.created_at });
 });
 
+// Old page URLs have one destination. Markdown aliases above remain readable
+// for existing agents, with /rules URLs in their canonical metadata.
+surfaces.on("GET", ["/handbook", "/handbook/*", "/faq", "/faq/"], (c) => {
+  const url = new URL(c.req.url);
+  const path = url.pathname.startsWith("/handbook") ? url.pathname.replace(/^\/handbook/, "/rules") : "/rules";
+  return c.redirect(path + url.search, 308);
+});
+
 surfaces.get("/org.md", async (c) => {
-  const rule = await getRule(c.env.DB, "org-chart");
-  if (!rule) {
-    // try by rule_id ORG-001
-    const { results } = await c.env.DB.prepare("SELECT * FROM rules WHERE rule_id = ? OR slug = ?").bind("ORG-001", "org-chart").all();
-    if (!results || results.length === 0) return c.json({ message: "Not found" }, 404);
-  }
-  const r = rule || ((await (async () => {
-    const { results } = await c.env.DB.prepare("SELECT * FROM rules WHERE rule_id = ? OR slug = ?").bind("ORG-001", "org-chart").all();
-    return (results && results[0]) as any;
-  })()));
-  const ruleObj = rule || r;
-  if (!ruleObj || ruleObj.status === "draft") return c.json({ message: "Not found" }, 404);
+  const ruleObj = await getOrgRule(c.env.DB);
+  if (!ruleObj) return c.json({ message: "Not found" }, 404);
   const doc = toMarkdownDocument({
     frontmatter: {
       title: ruleObj.title,
@@ -112,13 +110,8 @@ surfaces.get("/org.md", async (c) => {
 });
 
 surfaces.get("/org.mmd", async (c) => {
-  const rule = await getRule(c.env.DB, "org-chart");
-  const r = rule || ((await (async () => {
-    const { results } = await c.env.DB.prepare("SELECT * FROM rules WHERE rule_id = ? OR slug = ?").bind("ORG-001", "org-chart").all();
-    return (results && results[0]) as any;
-  })()));
-  const ruleObj = rule || r;
-  if (!ruleObj || ruleObj.status === "draft") return c.json({ message: "Not found" }, 404);
+  const ruleObj = await getOrgRule(c.env.DB);
+  if (!ruleObj) return c.json({ message: "Not found" }, 404);
   const match = ruleObj.body_md.match(/```mermaid\s*([\s\S]*?)```/);
   const mmd = match ? match[1].trim() : ruleObj.body_md;
   return conditionalResponse(c.req.raw, mmd, { contentType: "text/plain; charset=utf-8", updatedAt: ruleObj.updated_at || ruleObj.created_at });
@@ -127,16 +120,16 @@ surfaces.get("/org.mmd", async (c) => {
 surfaces.get("/llms.txt", async (c) => {
   const posts = await listPublishedPosts(c.env.DB, { limit: 20 });
   const rules = await listRules(c.env.DB);
-  const updated = posts[0]?.updated_at || rules[0]?.updated_at || nowIso();
+  const updated = (await getPublicState(c.env.DB)).changed_at;
   let out = "# JonVerk Newsfeed\n\n";
-  out += "JonVerk Newsfeed is an announcement feed plus a citable handbook. Agents and humans can fetch clean markdown and machine indexes.\n\n";
-  out += "## Announcements\n\n";
+  out += "JonVerk Newsfeed provides news and citable operational rules. Agents and humans can fetch clean markdown and machine indexes.\n\n";
+  out += "## Newsfeed\n\n";
   for (const p of posts) {
     const summary = deriveSummary(p.body_md).replace(/\n/g, " ");
     const d = p.published_at ? p.published_at.slice(0, 10) : p.updated_at.slice(0, 10);
     out += `- [${p.title}](/news/${p.slug}.md) — ${summary} (${d})\n`;
   }
-  out += "\n## Handbook\n\n";
+  out += "\n## Operational Rules\n\n";
   // group by category
   const byCat: Record<string, any[]> = {};
   for (const r of rules) {
@@ -146,18 +139,18 @@ surfaces.get("/llms.txt", async (c) => {
   }
   for (const cat of Object.keys(byCat)) {
     for (const r of byCat[cat]) {
-      out += `- [${r.title}](/handbook/${r.slug}.md) — ${r.rule_id}${r.status === "superseded" && r.superseded_by ? ` (superseded by ${r.superseded_by})` : ""}\n`;
+      out += `- [${r.title}](/rules/${r.slug}.md) — ${r.rule_id}${r.status === "superseded" && r.superseded_by ? ` (superseded by ${r.superseded_by})` : ""}\n`;
     }
   }
   out += "\n## Org\n\n";
-  out += "- [Org chart](/org.md)\n";
+  if (await getOrgRule(c.env.DB)) out += "- [Org chart](/org.md)\n";
   return conditionalResponse(c.req.raw, out, { contentType: "text/plain; charset=utf-8", updatedAt: updated || nowIso() });
 });
 
 surfaces.get("/llms-full.txt", async (c) => {
   const posts = await listPublishedPosts(c.env.DB, { limit: 200 });
   const rules = await listRules(c.env.DB, { statuses: ["active", "superseded"] });
-  const updated = posts[0]?.updated_at || rules[0]?.updated_at || nowIso();
+  const updated = (await getPublicState(c.env.DB)).changed_at;
   const chunks: string[] = [];
   for (const p of posts) {
     const doc = toMarkdownDocument({
@@ -189,7 +182,7 @@ surfaces.get("/llms-full.txt", async (c) => {
         effective_at: r.effective_at,
         updated_at: r.updated_at,
         superseded_by: r.superseded_by,
-        canonical: `/handbook/${r.slug}`,
+        canonical: `/rules/${r.slug}`,
       },
       body: r.status === "superseded" ? `> SUPERSEDED by ${r.superseded_by || ""}\n\n` + r.body_md : r.body_md,
     });
@@ -203,7 +196,7 @@ surfaces.get("/llms-full.txt", async (c) => {
   if (updated) {
     headers.set("Last-Modified", new Date(updated).toUTCString());
   }
-  headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+  headers.set("Cache-Control", "public, no-cache");
 
   if (ifNone && ifNone.includes(etag)) {
     return new Response(null, { status: 304, headers });

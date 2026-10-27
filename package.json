@@ -48,7 +48,8 @@
 		"dev": "react-router dev",
 		"preview": "npm run build && vite preview",
 		"typecheck": "npm run cf-typegen && react-router typegen && tsc -b",
-		"test": "vitest run"
+		"test": "vitest run",
+		"test:portable": "npm run build && vitest run --config vitest.portable.config.ts"
 	},
 	"type": "module"
 }

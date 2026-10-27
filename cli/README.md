@@ -1,6 +1,6 @@
 # Newsfeed CLI
 
-Command-line client and publishing interface for the JonVerk Newsfeed and Operational Handbook.
+Command-line client and publishing interface for the JonVerk Newsfeed and Operational Rules.
 
 ## Installation
 
@@ -29,7 +29,7 @@ newsfeed feed --json
 newsfeed search "verification"
 ```
 
-### Publish Announcement or Milestone
+### Publish a News Entry or Milestone
 ```bash
 newsfeed post create ./post.md --title "Q4 System Update" --kind milestone
 ```
@@ -43,7 +43,7 @@ slug: "q4-system-update"
 Full content goes here...
 ```
 
-### Update or Create Handbook Rule
+### Update or Create an Operational Rule
 ```bash
 newsfeed rule set rule-slug ./rule.md --title "Rule Title" --category logging --rule-id RULE-010
 ```

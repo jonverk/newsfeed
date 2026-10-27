@@ -2,10 +2,11 @@ import React from "react";
 import { Link, useLoaderData } from "react-router";
 import { Layout } from "../components/Layout";
 import { listRules, type Rule } from "../../workers/lib/content";
+import { displayRuleCategory, RULE_CATEGORY_NAMES } from "../lib/rule-categories";
 
 export function meta() {
 	return [
-		{ title: "Operational Handbook & FAQ — JonVerk" },
+		{ title: "Operational Rules — JonVerk" },
 		{ name: "description", content: "Canonical rules, procedures, and architectural references." },
 	];
 }
@@ -17,34 +18,24 @@ export async function loader({ context }: { context: any }) {
 	return { rules };
 }
 
-const CATEGORY_NAMES: Record<string, string> = {
-	rules: "Core Rules",
-	org: "Organization & Structure",
-	logging: "Logging & Observability",
-	verification: "Verification & Quality Gates",
-	process: "Operational Processes",
-	faq: "Frequently Asked Questions (FAQ)",
-	other: "Miscellaneous Policies",
-};
-
-export default function HandbookIndex() {
+export default function RulesIndex() {
 	const { rules } = useLoaderData<typeof loader>();
 
 	// Group rules by category
 	const grouped = rules.reduce<Record<string, Rule[]>>((acc, rule) => {
-		const cat = rule.category || "other";
+		const cat = displayRuleCategory(rule.category || "other");
 		if (!acc[cat]) acc[cat] = [];
 		acc[cat].push(rule);
 		return acc;
 	}, {});
 
-	const categories = Object.keys(CATEGORY_NAMES).filter((cat) => grouped[cat]?.length > 0);
+	const categories = Object.keys(RULE_CATEGORY_NAMES).filter((cat) => grouped[cat]?.length > 0);
 
 	return (
 		<Layout>
 			<div className="mb-8 pb-4 border-b border-neutral-200 dark:border-neutral-800">
 				<h1 className="text-3xl font-serif font-bold text-neutral-900 dark:text-neutral-100">
-					Operational Handbook & FAQ
+					Operational Rules
 				</h1>
 				<p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
 					Structured operational rules, verification requirements, and policies.
@@ -52,13 +43,13 @@ export default function HandbookIndex() {
 			</div>
 
 			{rules.length === 0 ? (
-				<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No handbook rules seeded yet.</p>
+				<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No operational rules yet.</p>
 			) : (
 				<div className="space-y-12">
 					{categories.map((cat) => (
 						<section key={cat}>
 							<h2 className="text-lg font-serif font-semibold text-neutral-900 dark:text-neutral-100 mb-4 pb-1 border-b border-neutral-200 dark:border-neutral-800">
-								{CATEGORY_NAMES[cat] || cat}
+								{RULE_CATEGORY_NAMES[cat] || cat}
 							</h2>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 								{grouped[cat].map((rule) => {
@@ -66,7 +57,7 @@ export default function HandbookIndex() {
 									return (
 										<Link
 											key={rule.rule_id}
-											to={`/handbook/${rule.slug}`}
+											to={`/rules/${rule.slug}`}
 											className={`p-3 rounded border transition-colors flex items-start justify-between gap-3 ${
 												isSuperseded
 													? "border-neutral-200 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/20 opacity-75"

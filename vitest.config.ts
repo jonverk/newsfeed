@@ -10,11 +10,14 @@ export default defineConfig({
       miniflare: {
         bindings: {
           NEWSFEED_TOKEN: "test-token",
+          ADMIN_USERNAME: "jon",
+          ADMIN_PASSWORD: "test-password",
         },
       },
     }),
   ],
   test: {
     setupFiles: ["./tests/setup.ts"],
+    exclude: ["tests/portable/**", "**/node_modules/**"],
   },
 });

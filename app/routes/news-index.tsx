@@ -6,7 +6,7 @@ import { deriveSummary } from "../../workers/lib/render";
 
 export function meta() {
 	return [
-		{ title: "Announcements Archive — JonVerk Newsfeed" },
+		{ title: "Newsfeed Archive — JonVerk Newsfeed" },
 		{ name: "description", content: "Chronological log of operational updates and notices." },
 	];
 }
@@ -45,7 +45,7 @@ export default function NewsIndex() {
 		<Layout>
 			<div className="mb-8 pb-4 border-b border-neutral-200 dark:border-neutral-800">
 				<h1 className="text-3xl font-serif font-bold text-neutral-900 dark:text-neutral-100">
-					Announcements
+					Newsfeed
 				</h1>
 				<p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
 					Chronological updates, milestone completions, and operational decisions.
@@ -53,7 +53,7 @@ export default function NewsIndex() {
 			</div>
 
 			{posts.length === 0 ? (
-				<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No announcements published yet.</p>
+				<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No newsfeed entries published yet.</p>
 			) : (
 				<div className="space-y-10">
 					{posts.map((post) => (

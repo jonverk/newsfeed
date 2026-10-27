@@ -47,9 +47,9 @@ export async function searchContent(db: D1Database, q: string, kind?: "post" | "
     let sql = `SELECT search_index.kind, search_index.slug, search_index.title, snippet(search_index, 3, '<mark>', '</mark>', '…', 24) as snippet
 FROM search_index
 JOIN (
-  SELECT 'post' as kind, slug FROM posts WHERE status = 'published'
+  SELECT 'post' as kind, slug FROM posts WHERE deleted_at IS NULL AND status = 'published'
   UNION ALL
-  SELECT 'rule' as kind, slug FROM rules WHERE status IN ('active', 'superseded')
+  SELECT 'rule' as kind, slug FROM rules WHERE deleted_at IS NULL AND status IN ('active', 'superseded')
 ) valid ON search_index.kind = valid.kind AND search_index.slug = valid.slug
 WHERE search_index MATCH ?`;
     if (kind) sql += " AND search_index.kind = ?";
@@ -59,7 +59,7 @@ WHERE search_index MATCH ?`;
     const { results } = await stmt.all();
     const hits: SearchHit[] = [];
     for (const r of (results || []) as any[]) {
-      const url = r.kind === "post" ? `/news/${r.slug}` : `/handbook/${r.slug}`;
+      const url = r.kind === "post" ? `/news/${r.slug}` : `/rules/${r.slug}`;
       const md_url = `${url}.md`;
       hits.push({
         kind: r.kind,
@@ -87,7 +87,7 @@ async function fallbackSearch(db: D1Database, q: string, kind?: "post" | "rule")
   const hits: SearchHit[] = [];
   if (!kind || kind === "post") {
     const { results } = await db
-      .prepare("SELECT slug, title, body_md FROM posts WHERE status = 'published' AND (title LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\') LIMIT 20")
+      .prepare("SELECT slug, title, body_md FROM posts WHERE deleted_at IS NULL AND status = 'published' AND (title LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\') LIMIT 20")
       .bind(pattern, pattern)
       .all();
     for (const r of (results || []) as any[]) {
@@ -96,11 +96,11 @@ async function fallbackSearch(db: D1Database, q: string, kind?: "post" | "rule")
   }
   if (!kind || kind === "rule") {
     const { results } = await db
-      .prepare("SELECT slug, title, body_md FROM rules WHERE status IN ('active','superseded') AND (title LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\') LIMIT 20")
+      .prepare("SELECT slug, title, body_md FROM rules WHERE deleted_at IS NULL AND status IN ('active','superseded') AND (title LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\') LIMIT 20")
       .bind(pattern, pattern)
       .all();
     for (const r of (results || []) as any[]) {
-      hits.push({ kind: "rule", slug: r.slug, title: r.title, snippet: "", url: `/handbook/${r.slug}`, md_url: `/handbook/${r.slug}.md` });
+      hits.push({ kind: "rule", slug: r.slug, title: r.title, snippet: "", url: `/rules/${r.slug}`, md_url: `/rules/${r.slug}.md` });
     }
   }
   return hits;

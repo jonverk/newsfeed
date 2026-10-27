@@ -1,0 +1,4 @@
+# Local development only. Set real production values using Wrangler secrets.
+NEWSFEED_TOKEN=replace-with-cli-token
+ADMIN_USERNAME=jon
+ADMIN_PASSWORD=replace-with-a-long-unique-password

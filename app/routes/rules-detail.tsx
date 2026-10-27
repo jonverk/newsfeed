@@ -4,13 +4,14 @@ import { Layout } from "../components/Layout";
 import { Markdown } from "../components/Markdown";
 import { getRule, getRuleById } from "../../workers/lib/content";
 import { renderMarkdown } from "../../workers/lib/render";
+import { displayRuleCategory, RULE_CATEGORY_NAMES } from "../lib/rule-categories";
 
 export function meta({ data }: { data: any }) {
 	if (!data?.rule) {
 		return [{ title: "Rule Not Found" }];
 	}
 	return [
-		{ title: `${data.rule.rule_id}: ${data.rule.title} — JonVerk Handbook` },
+		{ title: `${data.rule.rule_id}: ${data.rule.title} — JonVerk Operational Rules` },
 		{ name: "description", content: data.rule.title },
 	];
 }
@@ -38,7 +39,7 @@ export async function loader({ params, context }: { params: { slug?: string }; c
 	return { rule, replacementRule, html };
 }
 
-export default function HandbookDetail() {
+export default function RuleDetail() {
 	const { rule, replacementRule, html } = useLoaderData<typeof loader>();
 	const isSuperseded = rule.status === "superseded";
 
@@ -51,7 +52,7 @@ export default function HandbookDetail() {
 							{rule.rule_id}
 						</span>
 						<span>&middot;</span>
-						<span className="capitalize">{rule.category}</span>
+						<span>{RULE_CATEGORY_NAMES[displayRuleCategory(rule.category)] || rule.category}</span>
 						<span>&middot;</span>
 						<span>Owner: {rule.owner || "Team"}</span>
 						<span>&middot;</span>
@@ -78,7 +79,7 @@ export default function HandbookDetail() {
 								<>
 									{" "}Active successor:{" "}
 									{replacementRule ? (
-										<Link to={`/handbook/${replacementRule.slug}`} className="font-mono font-semibold underline">
+										<Link to={`/rules/${replacementRule.slug}`} className="font-mono font-semibold underline">
 											{replacementRule.rule_id} ({replacementRule.title}) &rarr;
 										</Link>
 									) : (
@@ -97,12 +98,12 @@ export default function HandbookDetail() {
 				<div className="mt-12 pt-6 border-t border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-500 dark:text-neutral-400 flex flex-col sm:flex-row justify-between gap-2">
 					<div>
 						<span>Canonical: </span>
-						<span className="text-neutral-700 dark:text-neutral-300">/handbook/{rule.slug}</span>
+						<span className="text-neutral-700 dark:text-neutral-300">/rules/{rule.slug}</span>
 					</div>
 					<div>
 						<span>Raw: </span>
-						<a href={`/handbook/${rule.slug}.md`} className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
-							/handbook/{rule.slug}.md
+						<a href={`/rules/${rule.slug}.md`} className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
+							/rules/{rule.slug}.md
 						</a>
 					</div>
 				</div>

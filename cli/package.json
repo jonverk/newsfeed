@@ -1,7 +1,7 @@
 {
   "name": "newsfeed-cli",
   "version": "1.0.0",
-  "description": "CLI client for JonVerk Newsfeed and Operational Handbook",
+  "description": "CLI client for JonVerk Newsfeed and Operational Rules",
   "type": "module",
   "main": "dist/client.js",
   "types": "dist/client.d.ts",

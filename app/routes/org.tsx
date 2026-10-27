@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLoaderData } from "react-router";
 import { Layout } from "../components/Layout";
 import { OrgChart } from "../components/OrgChart";
-import { getRule } from "../../workers/lib/content";
+import { getOrgRule } from "../../workers/lib/content";
 
 export function meta() {
 	return [
@@ -14,16 +14,8 @@ export function meta() {
 export async function loader({ context }: { context: any }) {
 	const db = context?.cloudflare?.env?.DB;
 	if (!db) throw new Response("Not found", { status: 404 });
-	let rule = await getRule(db, "org-chart");
-	if (!rule) {
-		const { results } = await db.prepare("SELECT * FROM rules WHERE rule_id = ? OR slug = ?").bind("ORG-001", "org-chart").all();
-		if (results && results.length > 0) {
-			rule = results[0] as any;
-		}
-	}
-	if (!rule || rule.status === "draft") {
-		throw new Response("Not found", { status: 404 });
-	}
+	const rule = await getOrgRule(db);
+	if (!rule) throw new Response("Not found", { status: 404 });
 
 	const match = rule.body_md.match(/```mermaid\s*([\s\S]*?)```/);
 	const mermaidSource = match ? match[1].trim() : rule.body_md;

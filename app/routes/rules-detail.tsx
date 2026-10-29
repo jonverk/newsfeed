@@ -4,14 +4,13 @@ import { Layout } from "../components/Layout";
 import { Markdown } from "../components/Markdown";
 import { getRule, getRuleById } from "../../workers/lib/content";
 import { renderMarkdown } from "../../workers/lib/render";
-import { displayRuleCategory, RULE_CATEGORY_NAMES } from "../lib/rule-categories";
 
 export function meta({ data }: { data: any }) {
 	if (!data?.rule) {
 		return [{ title: "Rule Not Found" }];
 	}
 	return [
-		{ title: `${data.rule.rule_id}: ${data.rule.title} — JonVerk Operational Rules` },
+		{ title: `${data.rule.title} — JonVerk Operational Rules` },
 		{ name: "description", content: data.rule.title },
 	];
 }
@@ -47,19 +46,6 @@ export default function RuleDetail() {
 		<Layout>
 			<article className="max-w-2xl mx-auto">
 				<div className="mb-6">
-					<div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 font-mono mb-2">
-						<span className="px-2 py-0.5 rounded bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-bold">
-							{rule.rule_id}
-						</span>
-						<span>&middot;</span>
-						<span>{RULE_CATEGORY_NAMES[displayRuleCategory(rule.category)] || rule.category}</span>
-						<span>&middot;</span>
-						<span>Owner: {rule.owner || "Team"}</span>
-						<span>&middot;</span>
-						<time dateTime={rule.effective_at || rule.created_at}>
-							Effective: {rule.effective_at ? new Date(rule.effective_at).toISOString().split("T")[0] : ""}
-						</time>
-					</div>
 					<h1 className="text-3xl font-serif font-bold text-neutral-900 dark:text-neutral-100 leading-tight">
 						{rule.title}
 					</h1>
@@ -80,10 +66,10 @@ export default function RuleDetail() {
 									{" "}Active successor:{" "}
 									{replacementRule ? (
 										<Link to={`/rules/${replacementRule.slug}`} className="font-mono font-semibold underline">
-											{replacementRule.rule_id} ({replacementRule.title}) &rarr;
+											{replacementRule.title} &rarr;
 										</Link>
 									) : (
-										<span className="font-mono font-semibold">{rule.superseded_by}</span>
+										<span className="font-mono font-semibold">Replacement unavailable</span>
 									)}
 								</>
 							)}
@@ -95,18 +81,6 @@ export default function RuleDetail() {
 					<Markdown html={html} />
 				</div>
 
-				<div className="mt-12 pt-6 border-t border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-500 dark:text-neutral-400 flex flex-col sm:flex-row justify-between gap-2">
-					<div>
-						<span>Canonical: </span>
-						<span className="text-neutral-700 dark:text-neutral-300">/rules/{rule.slug}</span>
-					</div>
-					<div>
-						<span>Raw: </span>
-						<a href={`/rules/${rule.slug}.md`} className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
-							/rules/{rule.slug}.md
-						</a>
-					</div>
-				</div>
 			</article>
 		</Layout>
 	);

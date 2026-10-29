@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { data, Link, useLoaderData, useNavigate, useRevalidator, useSearchParams, type LoaderFunctionArgs } from "react-router";
 import { Layout } from "../components/Layout";
 import { adminRequest, AdminRequestError } from "../lib/admin-client";
@@ -6,7 +6,6 @@ import { adminHeaders, loadAdmin, type AdminData } from "../../workers/lib/admin
 import type { AppEnv } from "../../workers/lib/env";
 import type { Post, Rule } from "../../workers/lib/content";
 import { slugify } from "../../workers/lib/slug";
-import { displayRuleCategory, RULE_CATEGORY_NAMES } from "../lib/rule-categories";
 
 export const meta = () => [{ title: "Administration — JonVerk" }, { name: "robots", content: "noindex, nofollow" }];
 export const headers = () => adminHeaders;
@@ -35,10 +34,6 @@ function Failure({ error }: { error: Error | null }) {
   </div>;
 }
 
-function Fields({ children }: { children: ReactNode }) {
-  return <div className="grid sm:grid-cols-2 gap-4">{children}</div>;
-}
-
 function EntryEditor({ section, item }: { section: "news" | "rules"; item: Post | Rule | null }) {
   const task = useTask();
   const navigate = useNavigate();
@@ -54,7 +49,7 @@ function EntryEditor({ section, item }: { section: "news" | "rules"; item: Post 
       const title = String(form.get("title") || "");
       const body = String(form.get("body") || "");
       if (news) {
-        const input = { title, body, kind: String(form.get("kind")), author: String(form.get("author")) };
+        const input = { title, body };
         if (!item) {
           creationKey.current ||= crypto.randomUUID();
           await adminRequest("/api/posts", "POST", { ...input, draft: intent !== "publish" }, { "Idempotency-Key": creationKey.current });
@@ -64,10 +59,8 @@ function EntryEditor({ section, item }: { section: "news" | "rules"; item: Post 
         }
       } else {
         const slug = item?.slug || slugify(title);
-        const date = String(form.get("effective_at") || "");
         await adminRequest(`/api/rules/${slug}`, "PUT", {
-          title, body, category: String(form.get("category")), owner: String(form.get("owner")),
-          effective_at: date ? `${date}T00:00:00.000Z` : null,
+          title, body, category: rule?.category || "rules", owner: rule?.owner || "",
         }, item ? undefined : { "If-None-Match": "*" });
       }
       await navigate(`/admin/${section}?saved=1`);
@@ -76,24 +69,10 @@ function EntryEditor({ section, item }: { section: "news" | "rules"; item: Post 
   return <>
     <div className="mb-6"><Link to={`/admin/${section}`} className="underline text-sm">← Back to {news ? "newsfeed" : "rules"}</Link></div>
     <h1 className="text-3xl font-serif font-bold mb-2">{item ? "Edit" : "Add"} {news ? "news entry" : "operational rule"}</h1>
-    {item && <p className="text-sm font-mono opacity-70 mb-6">{"rule_id" in item ? `${item.rule_id} · ` : ""}{item.slug} · {item.status}</p>}
+    {item && <p className="text-sm font-mono opacity-70 mb-6">{item.slug}</p>}
     <form className="admin-form mt-6" onSubmit={submit}>
       <fieldset disabled={task.pending} className="space-y-5">
         <label>Title<input name="title" defaultValue={item?.title || ""} required maxLength={120} /></label>
-        <Fields>
-          {news ? <>
-            <label>Kind<select name="kind" defaultValue={post?.kind || "announcement"}>
-              <option value="announcement">News</option><option value="milestone">Milestone</option><option value="kudos">Kudos</option>
-            </select></label>
-            <label>Author<input name="author" defaultValue={post?.author ?? "Jon"} maxLength={120} /></label>
-          </> : <>
-            <label>Category<select name="category" defaultValue={displayRuleCategory(rule?.category || "rules")}>
-              {Object.entries(RULE_CATEGORY_NAMES).map(([category, label]) => <option key={category} value={category}>{label}</option>)}
-            </select></label>
-            <label>Owner<input name="owner" defaultValue={rule?.owner || ""} maxLength={120} /></label>
-            <label>Effective date<input name="effective_at" type="date" defaultValue={rule?.effective_at?.slice(0, 10) || ""} /></label>
-          </>}
-        </Fields>
         <label>Body (Markdown)<textarea name="body" defaultValue={item?.body_md || ""} rows={20} className="font-mono text-sm" aria-describedby="body-help" /></label>
         <p id="body-help" className="text-xs opacity-70">Plain Markdown, up to 64 KiB.</p>
         <Failure error={task.error} />
@@ -130,7 +109,7 @@ function OrgEditor({ item }: { item: Rule | null }) {
     {!item ? <p>Create an entry named “Org chart” in Operational Rules first.</p> : item.deleted_at ? <p>The org chart is in trash. <Link to="/admin/trash" className="underline">Restore it</Link> before uploading a replacement.</p> : <>
       <p className="mb-4">Upload a Markdown file containing the replacement Mermaid chart. Saving updates the existing org entry immediately.</p>
       <div className="flex flex-wrap gap-5 text-sm mb-8"><a href="/org.md" download="org.md" className="underline">Download current org.md</a><a href="/org" target="_blank" rel="noreferrer" className="underline">View org chart</a></div>
-      <p className="text-xs font-mono opacity-70 mb-6">{item.rule_id} · Last updated {item.updated_at}</p>
+      <p className="text-xs font-mono opacity-70 mb-6">Last updated {item.updated_at}</p>
       <form className="admin-form" onSubmit={upload}>
         <fieldset disabled={task.pending} className="space-y-5">
           <label>Replacement Markdown file<input name="file" type="file" accept=".md,text/markdown" required /></label>
@@ -172,7 +151,7 @@ export default function Admin() {
           {items.map((entry) => <li key={`${entry.entity}:${entry.slug}`} className="py-5 flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1 basis-64">
               {section === "trash" ? <p className="font-medium break-words">{entry.title}</p> : <Link className="font-medium underline break-words" to={entry.slug === "org-chart" || entry.rule_id === "ORG-001" ? "/admin/org" : `/admin/${section}/${entry.slug}/edit`}>{entry.title}</Link>}
-              <p className="text-xs font-mono opacity-70 mt-2 break-words">{entry.rule_id ? `${entry.rule_id} · ` : ""}{entry.entity === "post" ? "Newsfeed" : "Operational Rules"} · {entry.status}{entry.deleted_at ? ` · Trashed ${entry.deleted_at.slice(0, 10)}` : ""}</p>
+              <p className="text-xs font-mono opacity-70 mt-2 break-words">{entry.entity === "post" && entry.status === "draft" ? "Draft" : ""}{entry.deleted_at ? ` · Trashed ${entry.deleted_at.slice(0, 10)}` : ""}</p>
             </div>
             <button className="text-sm underline disabled:opacity-50" disabled={task.pending} aria-label={`${section === "trash" ? "Restore" : "Trash"} ${entry.title}`} onClick={() => {
               if (section !== "trash" && !window.confirm(`Move “${entry.title}” to trash?`)) return;

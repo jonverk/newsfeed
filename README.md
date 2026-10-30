@@ -61,4 +61,4 @@ See [cli/README.md](cli/README.md) for full CLI documentation.
 
 ## Deployment & Operations
 
-Refer to [docs/runbooks/newsfeed-deploy.md](docs/runbooks/newsfeed-deploy.md) for detailed deployment steps, D1 migrations, and verification procedures.
+Refer to [docs/runbooks/newsfeed-deploy.md](docs/runbooks/newsfeed-deploy.md) for comprehensive deployment steps, D1 migrations, and verification procedures.

@@ -140,3 +140,18 @@ it("offers Markdown sources on public pages and replacement uploads to editors",
     const html = await (await request(path,{headers:{cookie}})).text(); expect(html).toContain("Upload replacement"); expect(html).toContain("View Markdown source");
   }
 });
+
+it("shows existing categories as selectable controls on rule and news editors", async () => {
+  const cookie = await login();
+  await request("/api/tags", {method:"POST",headers:bearer,body:JSON.stringify({name:"Operations"})});
+  await request("/api/rules/category-rule", {method:"PUT",headers:bearer,body:JSON.stringify({title:"Category rule",body:"body"})});
+  await request("/api/tags/rule/category-rule", {method:"PUT",headers:bearer,body:JSON.stringify({tags:["Operations"]})});
+  const post = await (await request("/api/posts", {method:"POST",headers:bearer,body:JSON.stringify({title:"Category news",body:"body",draft:true})})).json() as {slug:string};
+  for (const path of ["/admin/rules/category-rule/edit", `/admin/news/${post.slug}/edit`]) {
+    const html = await (await request(path,{headers:{cookie}})).text();
+    expect(html).toContain("Apply categories"); expect(html).toContain('type="checkbox"'); expect(html).toContain('value="Operations"');
+  }
+  const rule = await (await request("/admin/rules/category-rule/edit",{headers:{cookie}})).text();
+  expect(rule.match(/<input[^>]*value="Operations"[^>]*>/)?.[0]).toContain("checked");
+  const list = await (await request("/admin/news",{headers:{cookie}})).text(); expect(list).toContain(`/admin/news/${post.slug}/edit#categories`);
+});

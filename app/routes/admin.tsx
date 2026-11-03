@@ -98,7 +98,11 @@ function EntryEditor({ section, item, tags, selectedTags }: { section: "news" | 
         <label>Title<input name="title" defaultValue={item?.title || ""} required maxLength={120} /></label>
         <label>Body (Markdown)<textarea name="body" defaultValue={item?.body_md || ""} rows={20} className="font-mono text-sm" aria-describedby="body-help" /></label>
         <p id="body-help" className="text-xs opacity-70">Plain Markdown, up to 64 KiB.</p>
-        <fieldset><legend>Categories</legend>{tags.map(tag => <label key={tag}><input type="checkbox" name="tags" value={tag} defaultChecked={selectedTags.includes(tag)} /> {tag}</label>)}</fieldset>
+        <fieldset id="categories" aria-describedby="categories-help">
+          <legend className="font-medium">Apply categories</legend>
+          <p id="categories-help" className="text-sm opacity-70 mt-1 mb-2">Select the categories for this {news ? "news entry" : "rule"}. Save the entry to apply your changes.</p>
+          {tags.length ? tags.map(tag => <label className="category-option" key={tag}><input type="checkbox" name="tags" value={tag} defaultChecked={selectedTags.includes(tag)} /><span>{tag}</span></label>) : <p className="text-sm opacity-70">No categories yet. Add one below.</p>}
+        </fieldset>
         <label>New categories (comma separated)<input name="newCategories" placeholder="Add categories when saving" /></label>
         <Failure error={task.error} />
         <div className="flex flex-wrap items-center gap-3">
@@ -194,6 +198,7 @@ export default function Admin() {
           {items.map((entry) => <li key={`${entry.entity}:${entry.slug}`} className="py-5 flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1 basis-64">
               {section === "trash" ? <p className="font-medium break-words">{entry.title}</p> : <Link className="font-medium underline break-words" to={`/admin/${section}/${entry.slug}/edit`}>{entry.title}</Link>}
+              {section !== "trash" && <p className="mt-2"><Link className="text-sm underline" to={`/admin/${section}/${entry.slug}/edit#categories`}>Apply categories</Link></p>}
               <p className="text-xs font-mono opacity-70 mt-2 break-words">{entry.entity === "post" && entry.status === "draft" ? "Draft" : ""}{entry.deleted_at ? ` · Trashed ${entry.deleted_at.slice(0, 10)}` : ""}</p>
             </div>
             <button className="text-sm underline disabled:opacity-50" disabled={task.pending} aria-label={`${section === "trash" ? "Restore" : "Trash"} ${entry.title}`} onClick={() => {

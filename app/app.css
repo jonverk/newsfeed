@@ -2,14 +2,17 @@
 
 .admin-form label { display: block; font-size: 0.875rem; font-weight: 500; }
 .admin-form > label + label { margin-top: 1.25rem; }
-.admin-form input, .admin-form select, .admin-form textarea {
+.admin-form input:not([type="checkbox"]), .admin-form select, .admin-form textarea {
 	display: block; width: 100%; margin-top: 0.5rem; padding: 0.65rem 0.75rem;
 	border: 1px solid var(--border); border-radius: 0.25rem; background: var(--bg); color: var(--text);
 }
-.admin-form input:focus, .admin-form select:focus, .admin-form textarea:focus {
+.admin-form input:not([type="checkbox"]):focus, .admin-form select:focus, .admin-form textarea:focus {
 	outline: 2px solid var(--text); outline-offset: 2px;
 }
 .admin-form textarea { resize: vertical; }
+.admin-form .category-option { display: flex; align-items: center; gap: 0.65rem; padding: 0.4rem 0; cursor: pointer; }
+.admin-form .category-option input { width: 1.1rem; height: 1.1rem; margin: 0; padding: 0; accent-color: var(--text); }
+.admin-form .category-option input:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .admin-form fieldset:disabled { opacity: 0.65; }
 .admin-button {
 	display: inline-block; padding: 0.65rem 1rem; border-radius: 0.25rem;

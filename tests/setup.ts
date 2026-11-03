@@ -1,6 +1,7 @@
 import { beforeAll } from "vitest";
 import { applyD1Migrations, env } from "cloudflare:test";
 import initSql from "../migrations/0001_init.sql?raw";
+import v4Sql from "../migrations/0007_hermes_profiles.sql?raw";
 import v3Sql from "../migrations/0006_agent_context.sql?raw";
 import adminSql from "../migrations/0004_browser_admin.sql?raw";
 
@@ -18,10 +19,11 @@ export default async function setup() {
       { name: "0001_init.sql", queries: queriesFor(initSql) },
       { name: "0004_browser_admin.sql", queries: queriesFor(adminSql) },
       { name: "0006_agent_context.sql", queries: queriesFor(v3Sql) },
+      { name: "0007_hermes_profiles.sql", queries: queriesFor(v4Sql) },
     ]);
   } catch {
     // Fallback if applyD1Migrations is not supported in the test environment
-    for (const q of [...queriesFor(initSql), ...queriesFor(adminSql), ...queriesFor(v3Sql)]) {
+    for (const q of [...queriesFor(initSql), ...queriesFor(adminSql), ...queriesFor(v3Sql), ...queriesFor(v4Sql)]) {
       await env.DB.prepare(q).run();
     }
   }

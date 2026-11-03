@@ -66,7 +66,7 @@ function EntryEditor({ section, item, tags, selectedTags }: { section: "news" | 
           title, body,
         }, item ? undefined : { "If-None-Match": "*" });
       }
-      await adminRequest(`/api/tags/${news ? "post" : "rule"}/${savedSlug}`, "PUT", { tags: form.getAll("tags") });
+      await adminRequest(`/api/tags/${news ? "post" : "rule"}/${savedSlug}`, "PUT", { tags: [...form.getAll("tags"), ...String(form.get("newCategories") || "").split(",").map(s => s.trim()).filter(Boolean)] });
       await navigate(`/admin/${section}?saved=1`);
     });
   }
@@ -79,7 +79,8 @@ function EntryEditor({ section, item, tags, selectedTags }: { section: "news" | 
         <label>Title<input name="title" defaultValue={item?.title || ""} required maxLength={120} /></label>
         <label>Body (Markdown)<textarea name="body" defaultValue={item?.body_md || ""} rows={20} className="font-mono text-sm" aria-describedby="body-help" /></label>
         <p id="body-help" className="text-xs opacity-70">Plain Markdown, up to 64 KiB.</p>
-        <fieldset><legend>Tags</legend>{tags.map(tag => <label key={tag}><input type="checkbox" name="tags" value={tag} defaultChecked={selectedTags.includes(tag)} /> {tag}</label>)}</fieldset>
+        <fieldset><legend>Categories</legend>{tags.map(tag => <label key={tag}><input type="checkbox" name="tags" value={tag} defaultChecked={selectedTags.includes(tag)} /> {tag}</label>)}</fieldset>
+        <label>New categories (comma separated)<input name="newCategories" placeholder="Add categories when saving" /></label>
         <Failure error={task.error} />
         <div className="flex flex-wrap items-center gap-3">
           {news && post?.status !== "published" ? <>
@@ -139,8 +140,8 @@ function DirectoryEditor({ profiles, tags }: { profiles: {tag:string; body_md:st
   return <section className="mt-12 space-y-6"><h2 className="text-2xl font-serif font-bold">Agent profiles</h2>
     <div className="flex gap-3 flex-wrap"><button type="button" onClick={() => setSelected("")} className="underline">New agent</button>{profiles.map(p => <button type="button" className="underline" key={p.tag} onClick={() => setSelected(p.tag)}>{p.tag}</button>)}</div>
     <form key={selected} className="admin-form space-y-4" onSubmit={save}><label>Three-letter tag<input name="tag" required pattern="[A-Z]{3}" maxLength={3} defaultValue={selected} readOnly={!!current} /></label><label>Markdown description<textarea name="body" required rows={12} defaultValue={current?.body_md || ""} /></label><button className="admin-button" disabled={task.pending}>Save profile</button> {current && <button type="button" className="underline" onClick={() => { if (window.confirm(`Delete ${current.tag}?`)) void task.run(async () => { await adminRequest(`/api/agents/${current.tag}`, "DELETE"); setSelected(""); await revalidator.revalidate(); }); }}>Delete profile</button>}</form>
-    <h2 className="text-2xl font-serif font-bold">Tags</h2><form className="admin-form flex gap-3" onSubmit={e => { e.preventDefault(); const form = e.currentTarget; const name = String(new FormData(form).get("name")); void task.run(async () => { await adminRequest("/api/tags", "POST", {name}); form.reset(); await revalidator.revalidate(); }); }}><label>New tag<input name="name" required maxLength={80}/></label><button className="admin-button">Create tag</button></form>
-    <ul>{tags.map(tag => <li key={tag}>{tag} <button className="underline" type="button" onClick={() => { if (window.confirm(`Delete tag “${tag}” from all entries?`)) void task.run(async () => { await adminRequest(`/api/tags/${encodeURIComponent(tag)}`, "DELETE"); await revalidator.revalidate(); }); }}>Delete</button></li>)}</ul><Failure error={task.error}/>
+    <h2 className="text-2xl font-serif font-bold">Categories</h2><form className="admin-form flex gap-3" onSubmit={e => { e.preventDefault(); const form = e.currentTarget; const name = String(new FormData(form).get("name")); void task.run(async () => { await adminRequest("/api/tags", "POST", {name}); form.reset(); await revalidator.revalidate(); }); }}><label>New category<input name="name" required maxLength={80}/></label><button className="admin-button">Create category</button></form>
+    <ul>{tags.map(tag => <li key={tag}>{tag} <button className="underline" type="button" onClick={() => { if (window.confirm(`Delete category “${tag}” from all entries?`)) void task.run(async () => { await adminRequest(`/api/tags/${encodeURIComponent(tag)}`, "DELETE"); await revalidator.revalidate(); }); }}>Delete</button></li>)}</ul><Failure error={task.error}/>
   </section>;
 }
 

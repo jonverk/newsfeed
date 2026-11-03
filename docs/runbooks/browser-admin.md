@@ -6,7 +6,7 @@ Open `https://newsfeed.jonverk.online/login` and log in with the configured admi
 
 - **News:** add an entry, enter Markdown, then save a draft or publish. Open an existing title to edit it. Published edits take effect when saved. Editing keeps the same URL.
 - **Operational Rules:** add or edit an entry and save. Category, owner, and effective date are editable; URLs and rule IDs remain stable. A new title that conflicts with an existing URL is rejected rather than replacing it.
-- **Org chart:** download `org.md`, edit its Mermaid block, and upload the `.md` replacement. The file must be UTF-8 and at most 64 KiB. Export frontmatter is ignored on upload: the existing record's identity and metadata remain intact. Uploads update the same operational rule record used by `/org`, `/org.md`, and `/org.mmd`.
+- **Org chart:** download `org.md`, edit its Mermaid block, and upload the `.md` replacement. The file must be UTF-8 and at most 64 KiB. Export frontmatter is ignored on upload: the existing record's identity and metadata remain intact. Uploads update the chart used by `/org` and `/org.md`.
 - **Trash:** moving an entry to trash hides it from all public pages, feeds, Markdown, and search. Restore returns it to its former publication status. IDs and URLs remain reserved. Restore a trashed org entry before uploading a replacement.
 
 The editor accepts plain Markdown without a preview. No content is automatically cleaned up or designated authoritative during this upgrade. Existing placeholder text is left for the administrator to edit or trash.
@@ -106,3 +106,5 @@ Revoke all sessions when changing credentials; changing only the password does n
 - `PUT /api/rules/:slug` with `If-None-Match: *`: create only; returns `409` when the slug is already reserved, including by trash.
 
 Admin lists and editor data are protected React Router loaders under `/admin/*`. Private content is never added to public lists. Trashed direct URLs return `404`, including for bearer clients; use Trash to restore first.
+
+Hermes profile placeholders can be added with `NEWSFEED_TOKEN` set by running `node scripts/sync-hermes-profiles.mjs`. The script inspects the default profile and non-hidden profile directories under `$HERMES_HOME` (default `~/.hermes`), reads their three-letter identity tags, and creates missing profiles only. It does not upload profile files or replace existing descriptions. Set `NEWSFEED_URL` to target another deployment.

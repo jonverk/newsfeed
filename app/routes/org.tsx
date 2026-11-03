@@ -30,10 +30,6 @@ export default function Org() {
 		<Layout>
 			<div className="mb-6">
 				<div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 font-mono mb-2">
-					<a href="/org.mmd" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
-						raw .mmd
-					</a>
-					<span>&middot;</span>
 					<a href="/org.md" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
 						raw .md
 					</a>
@@ -60,9 +56,7 @@ export default function Org() {
 					<a href="/org.md" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
 						/org.md
 					</a>
-					<a href="/org.mmd" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
-						/org.mmd
-					</a>
+
 				</div>
 			</div>
 		</Layout>

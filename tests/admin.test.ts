@@ -179,7 +179,7 @@ it("round-trips org exports through uploads, retaining identity and keeping all 
   const current = (await getOrgRule(env.DB))!;
   expect(current.body_md).not.toContain("canonical:");
   expect(current.body_md).toContain("Updated Team");
-  for (const path of ["/org.md", "/org.mmd"]) expect(await (await SELF.fetch(origin + path)).text()).toContain("Updated Team");
+  for (const path of ["/org.md"]) expect(await (await SELF.fetch(origin + path)).text()).toContain("Updated Team");
 
 });
 

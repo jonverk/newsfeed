@@ -94,14 +94,6 @@ surfaces.get("/org.md", async (c) => {
   return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: ruleObj.updated_at });
 });
 
-surfaces.get("/org.mmd", async (c) => {
-  const ruleObj = await getOrgRule(c.env.DB);
-  if (!ruleObj) return c.json({ message: "Not found" }, 404);
-  const match = ruleObj.body_md.match(/```mermaid\s*([\s\S]*?)```/);
-  const mmd = match ? match[1].trim() : ruleObj.body_md;
-  return conditionalResponse(c.req.raw, mmd, { contentType: "text/plain; charset=utf-8", updatedAt: ruleObj.updated_at });
-});
-
 surfaces.get("/orglist.md", async c => {
   const profiles = await listProfiles(c.env.DB);
   const updated = (await getPublicState(c.env.DB)).changed_at;

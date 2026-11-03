@@ -67,7 +67,6 @@ curl -sS https://newsfeed.jonverk.online/feed.json
 curl -sS https://newsfeed.jonverk.online/llms.txt
 curl -sS https://newsfeed.jonverk.online/llms-full.txt
 curl -sS https://newsfeed.jonverk.online/org.md
-curl -sS https://newsfeed.jonverk.online/org.mmd
 
 # Search API
 curl -sS "https://newsfeed.jonverk.online/api/search?q=logging"

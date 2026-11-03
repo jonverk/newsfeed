@@ -8,7 +8,6 @@ beforeEach(async () => {
 });
 it("manages shared tags on rules and drafts without deleting entries", async () => {
   expect((await call("/api/tags", "POST", {name:"ops"}, {"content-type":"application/json"})).status).toBe(401);
-  expect((await call("/api/tags", "POST", {name:"ops"})).status).toBe(201);
   expect((await call("/api/rules/example", "PUT", {title:"Example", body:"Content"})).status).toBe(200);
   const post = await (await call("/api/posts", "POST", {title:"Draft",body:"Draft body",draft:true})).json<{slug:string}>();
   for (const [kind,slug] of [["rule","example"],["post",post.slug]]) expect((await call(`/api/tags/${kind}/${slug}`,"PUT",{tags:["ops"]})).status).toBe(200);
@@ -38,5 +37,5 @@ it("uploads and exports the independent chart without rule metadata", async () =
   expect((await SELF.fetch(origin + "/api/org", {method:"PUT",headers:{authorization:"Bearer test-token"},body:file})).status).toBe(200);
   const md = await (await SELF.fetch(origin + "/org.md")).text();
   expect(md).toContain("graph TD"); expect(md).not.toMatch(/rule_id|owner|status|category|updated_at/);
-  expect(await (await SELF.fetch(origin + "/org.mmd")).text()).toContain("A-->B");
+  expect((await SELF.fetch(origin + "/org.mmd")).status).toBe(404);
 });

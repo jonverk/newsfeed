@@ -29,7 +29,7 @@ The public navigation is **Newsfeed**, **Rules**, **Org**, **Projects**, **Searc
 - **1:1 Markdown Twins**:
   - Newsfeed: `/news/:slug.md` (e.g. [`/news/the-news-jonverk-newsfeed.md`](https://newsfeed.jonverk.online/news/the-news-jonverk-newsfeed.md))
   - Operational Rules: `/rules/:slug.md` (e.g. [`/rules/strict-logging-protocol.md`](https://newsfeed.jonverk.online/rules/strict-logging-protocol.md))
-  - Org Chart: [`/org.md`](https://newsfeed.jonverk.online/org.md) and [`/org.mmd`](https://newsfeed.jonverk.online/org.mmd)
+  - Org Chart: [`/org.md`](https://newsfeed.jonverk.online/org.md)
 - **Full-Text Search**: [`/api/search?q=<query>`](https://newsfeed.jonverk.online/api/search?q=logging) and web UI at [`/search`](https://newsfeed.jonverk.online/search).
 
 ## Operational Rules

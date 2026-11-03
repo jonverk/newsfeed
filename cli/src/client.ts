@@ -15,10 +15,6 @@ export interface PostInput {
 export interface RuleInput {
   title: string;
   body: string;
-  category: "rules" | "org" | "logging" | "verification" | "process" | "faq" | "other";
-  owner?: string;
-  rule_id?: string;
-  effective_at?: string;
 }
 
 export class NewsfeedClient {
@@ -86,19 +82,6 @@ export class NewsfeedClient {
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Set rule failed (${res.status}): ${errorText}`);
-    }
-    return res.json();
-  }
-
-  async supersedeRule(slug: string, supersededBy: string): Promise<any> {
-    const res = await fetch(`${this.baseUrl}/api/handbook/${encodeURIComponent(slug)}/supersede`, {
-      method: "POST",
-      headers: this.headers(true),
-      body: JSON.stringify({ superseded_by: supersededBy }),
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Supersede rule failed (${res.status}): ${errorText}`);
     }
     return res.json();
   }

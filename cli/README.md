@@ -45,12 +45,7 @@ Full content goes here...
 
 ### Update or Create an Operational Rule
 ```bash
-newsfeed rule set rule-slug ./rule.md --title "Rule Title" --category logging --rule-id RULE-010
-```
-
-### Supersede a Rule
-```bash
-newsfeed rule supersede old-rule-slug RULE-011
+newsfeed rule set rule-slug ./rule.md --title "Rule Title"
 ```
 
 ### View Org Chart

@@ -3,6 +3,7 @@ import { Link, useLoaderData } from "react-router";
 import { Layout } from "../components/Layout";
 import { Markdown } from "../components/Markdown";
 import { getPublishedPost } from "../../workers/lib/content";
+import { getTags } from "../../workers/lib/content";
 import { renderMarkdown } from "../../workers/lib/render";
 
 export function meta({ data }: { data: any }) {
@@ -26,11 +27,11 @@ export async function loader({ params, context }: { params: { slug?: string }; c
 		throw new Response("Not found", { status: 404 });
 	}
 	const html = renderMarkdown(post.body_md);
-	return { post, html };
+	return { post, html, tags: await getTags(db, "post", slug) };
 }
 
 export default function NewsDetail() {
-	const { post, html } = useLoaderData<typeof loader>();
+	const { post, html, tags } = useLoaderData<typeof loader>();
 
 	return (
 		<Layout>
@@ -41,6 +42,7 @@ export default function NewsDetail() {
 					</h1>
 				</div>
 
+				<p className="text-sm opacity-70">{tags.join(" · ")}</p>
 				<div className="py-6 border-t border-neutral-200 dark:border-neutral-800">
 					<Markdown html={html} />
 				</div>

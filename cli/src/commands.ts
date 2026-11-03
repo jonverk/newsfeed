@@ -58,9 +58,6 @@ export async function handleRuleSet(client: NewsfeedClient, args: {
   slug: string;
   file: string;
   title?: string;
-  category?: string;
-  owner?: string;
-  ruleId?: string;
 }) {
   const content = fs.readFileSync(args.file, "utf-8");
   const { frontmatter, body } = parseFrontmatter(content);
@@ -68,24 +65,8 @@ export async function handleRuleSet(client: NewsfeedClient, args: {
   if (!title) {
     throw new Error("Title is required (provide via --title or markdown frontmatter)");
   }
-  const category = (args.category || frontmatter.category || "rules") as any;
-  const owner = args.owner || frontmatter.owner || "";
-  const rule_id = args.ruleId || frontmatter.rule_id;
-
-  const res = await client.setRule(args.slug, {
-    title,
-    body: body.trim(),
-    category,
-    owner,
-    rule_id,
-  });
-  console.log(`Rule updated/created: ${res.rule_id} -> /rules/${res.slug}`);
-  return res;
-}
-
-export async function handleRuleSupersede(client: NewsfeedClient, slug: string, supersededBy: string) {
-  const res = await client.supersedeRule(slug, supersededBy);
-  console.log(`Rule ${slug} superseded by ${supersededBy}`);
+  const res = await client.setRule(args.slug, { title, body: body.trim() });
+  console.log(`Rule updated/created: /rules/${res.slug}`);
   return res;
 }
 

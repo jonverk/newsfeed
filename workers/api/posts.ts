@@ -3,7 +3,7 @@ import type { AppEnv } from "../lib/env";
 import { requireToken, writer, PRIVATE_CACHE } from "../lib/auth";
 import { validatePostInput } from "../lib/validate";
 import { slugify } from "../lib/slug";
-import { getPostForAdmin, getPublishedPost, listPublishedPosts } from "../lib/content";
+import { getPostForAdmin, getPublishedPost, listPublishedPosts, getTags } from "../lib/content";
 import { indexStatements, mutateContent, publicChange } from "../lib/mutations";
 import { registerTrashRoutes } from "./trash";
 
@@ -32,7 +32,7 @@ posts.post("/", async (c) => {
   const ts = new Date().toISOString();
   const draft = input.draft === true;
   const statements = [c.env.DB.prepare("INSERT INTO posts (slug,title,body_md,kind,author,status,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
-    .bind(slug, input.title, input.body, input.kind || "announcement", input.author ?? "Jon", draft ? "draft" : "published", draft ? null : ts, ts, ts),
+    .bind(slug, input.title, input.body, input.kind || "announcement", input.author ?? "", draft ? "draft" : "published", draft ? null : ts, ts, ts),
     ...indexStatements(c.env.DB, "post", slug)];
   if (!draft) statements.push(publicChange(c.env.DB, ts));
   // Keep creation and the idempotency result atomic, including the generated ID.
@@ -89,13 +89,13 @@ posts.get("/", async (c) => {
     const { results } = await c.env.DB.prepare("SELECT * FROM posts WHERE status=? AND deleted_at IS NULL ORDER BY created_at DESC").bind(status).all();
     return c.json({ items: results });
   }
-  return c.json({ items: await listPublishedPosts(c.env.DB) });
+  return c.json({ items: await Promise.all((await listPublishedPosts(c.env.DB)).map(async p => ({...p,tags:await getTags(c.env.DB,"post",p.slug)}))) });
 });
 
 posts.get("/:slug", async (c) => {
   const slug = c.req.param("slug");
   const published = await getPublishedPost(c.env.DB, slug);
-  if (published) return c.json(published);
+  if (published) return c.json({...published, tags: await getTags(c.env.DB,"post",slug)});
   const post = await getPostForAdmin(c.env.DB, slug);
   if (!post || post.deleted_at || await requireToken(c.req.raw, c.env)) return c.json({ message: "Not found" }, 404);
   c.header("Cache-Control", PRIVATE_CACHE);

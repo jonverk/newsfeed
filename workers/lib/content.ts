@@ -63,7 +63,7 @@ export async function getPostForAdmin(db: D1Database, slug: string): Promise<Pos
 }
 
 export async function listRules(db: D1Database, opts?: { statuses?: Array<"active" | "superseded"> }): Promise<Rule[]> {
-  const statuses = opts?.statuses ?? ["active", "superseded"];
+  const statuses = opts?.statuses ?? ["active"];
   if (statuses.length === 0) return [];
   const placeholders = statuses.map(() => "?").join(",");
   const { results } = await db
@@ -75,7 +75,7 @@ export async function listRules(db: D1Database, opts?: { statuses?: Array<"activ
 
 export async function getRule(db: D1Database, slug: string): Promise<Rule | null> {
   const { results } = await db
-    .prepare(`SELECT ${RULE_COLS} FROM rules WHERE slug = ? AND deleted_at IS NULL AND status IN ('active','superseded')`)
+    .prepare(`SELECT ${RULE_COLS} FROM rules WHERE slug = ? AND deleted_at IS NULL AND status = 'active'`)
     .bind(slug)
     .all();
   return (results && results[0]) ? (results[0] as Rule) : null;
@@ -83,7 +83,7 @@ export async function getRule(db: D1Database, slug: string): Promise<Rule | null
 
 export async function getRuleById(db: D1Database, rule_id: string): Promise<Rule | null> {
   const { results } = await db
-    .prepare(`SELECT ${RULE_COLS} FROM rules WHERE rule_id = ? AND deleted_at IS NULL AND status IN ('active','superseded')`)
+    .prepare(`SELECT ${RULE_COLS} FROM rules WHERE rule_id = ? AND deleted_at IS NULL AND status = 'active'`)
     .bind(rule_id)
     .all();
   return (results && results[0]) ? (results[0] as Rule) : null;
@@ -93,12 +93,19 @@ export async function getRuleForAdmin(db: D1Database, slug: string): Promise<Rul
   return db.prepare(`SELECT ${RULE_COLS} FROM rules WHERE slug = ?`).bind(slug).first<Rule>();
 }
 
-export async function getOrgRule(db: D1Database): Promise<Rule | null> {
-  return db.prepare(`SELECT ${RULE_COLS} FROM rules
-    WHERE (slug = 'org-chart' OR rule_id = 'ORG-001') AND deleted_at IS NULL AND status IN ('active','superseded')
-    ORDER BY CASE WHEN slug = 'org-chart' THEN 0 ELSE 1 END LIMIT 1`).first<Rule>();
+export type OrgChart = { title: string; body_md: string; updated_at: string };
+export async function getOrgRule(db: D1Database): Promise<OrgChart | null> {
+  return db.prepare("SELECT title, body_md, updated_at FROM org_chart WHERE id = 1").first<OrgChart>();
+}
+export type AgentProfile = { tag: string; body_md: string };
+export async function listProfiles(db: D1Database): Promise<AgentProfile[]> {
+  return (await db.prepare("SELECT tag, body_md FROM agent_profiles ORDER BY tag").all<AgentProfile>()).results;
 }
 
 export async function getPublicState(db: D1Database): Promise<{ changed_at: string; version: number }> {
   return (await db.prepare("SELECT changed_at, version FROM content_state WHERE id = 1").first<{ changed_at: string; version: number }>())!;
+}
+
+export async function getTags(db: D1Database, kind: "post" | "rule", slug: string): Promise<string[]> {
+  return (await db.prepare("SELECT tag FROM entry_tags WHERE entity_type=? AND entity_ref=? ORDER BY tag").bind(kind, slug).all<{tag:string}>()).results.map(row => row.tag);
 }

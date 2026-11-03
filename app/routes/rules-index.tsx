@@ -5,7 +5,7 @@ import { listRules } from "../../workers/lib/content";
 export function meta() { return [{ title: "Operational Rules — JonVerk" }]; }
 export async function loader({ context }: { context: any }) {
   const db = context?.cloudflare?.env?.DB;
-  return { rules: db ? await listRules(db, { statuses: ["active"] }) : [] };
+  return { rules: db ? (await listRules(db)).map(({slug,title}) => ({slug,title})) : [] };
 }
 export default function RulesIndex() {
   const { rules } = useLoaderData<typeof loader>();

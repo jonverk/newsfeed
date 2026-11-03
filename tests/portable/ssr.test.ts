@@ -40,7 +40,7 @@ it("serves login and redirects all anonymous admin documents and data requests",
 it("renders authenticated Markdown editors, lists, org upload, and trash from the production build", async () => {
   const cookie = await login();
   const headers = { cookie };
-  for (const [path, text] of [["/admin/news", "Add entry"], ["/admin/news/new", "Save draft"], ["/admin/rules/new", "Effective date"], ["/admin/trash", "Trash is empty."]]) {
+  for (const [path, text] of [["/admin/news", "Add entry"], ["/admin/news/new", "Save draft"], ["/admin/rules/new", "Body (Markdown)"], ["/admin/trash", "Trash is empty."]]) {
     const response = await request(path, { headers });
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
@@ -62,23 +62,14 @@ it("renders authenticated Markdown editors, lists, org upload, and trash from th
   for (const path of ["/", "/news", `/news/${slug}`, "/search?q=private", "/rules"]) expect(await (await request(path)).text()).not.toContain("private-ssr-body");
 });
 
-it("removes trashed rules and org charts from public SSR pages and handles deleted replacements", async () => {
-  await request("/api/handbook/org-chart", { method: "PUT", headers: bearer, body: JSON.stringify({ title: "Org", body: "```mermaid\ngraph TD\nA-->B\n```", category: "org" }) });
-  for (const slug of ["older", "replacement"]) await request(`/api/handbook/${slug}`, { method: "PUT", headers: bearer, body: JSON.stringify({ title: slug, body: "rule-ssr-canary", category: "faq" }) });
-  const target = await (await request("/api/handbook/replacement")).json() as { rule_id: string };
-  await request("/api/handbook/older/supersede", { method: "POST", headers: bearer, body: JSON.stringify({ superseded_by: target.rule_id }) });
-  await request("/api/handbook/replacement", { method: "DELETE", headers: bearer });
-  const older = await request("/rules/older");
-  expect(older.status).toBe(200);
-  expect(await older.text()).not.toContain('href="/rules/replacement"');
-  await request("/api/handbook/older", { method: "DELETE", headers: bearer });
-  for (const path of ["/rules/older", "/rules/replacement"]) expect((await request(path)).status).toBe(404);
-  for (const path of ["/rules"]) expect(await (await request(path)).text()).not.toContain("rule-ssr-canary");
-  const search = await (await request("/search?q=rule-ssr-canary")).text();
-  expect(search.replace(/<!--[\s\S]*?-->/g, "")).toContain("Found 0 results");
+it("keeps the chart independent when a rule is trashed", async () => {
+  const file = new FormData(); file.set("file", new File(["```mermaid\ngraph TD\nA-->B\n```"], "org.md"));
+  expect((await request("/api/org", {method:"PUT",headers:{authorization:"Bearer test-token"},body:file})).status).toBe(200);
+  await request("/api/rules/example", {method:"PUT",headers:bearer,body:JSON.stringify({title:"Example",body:"rule-ssr-canary"})});
+  await request("/api/rules/example", {method:"DELETE",headers:bearer});
+  expect((await request("/rules/example")).status).toBe(404);
   expect((await request("/org")).status).toBe(200);
-  await request("/api/handbook/org-chart", { method: "DELETE", headers: bearer });
-  expect((await request("/org")).status).toBe(404);
+  expect((await (await request("/org.md")).text())).toContain("A-->B");
 });
 
 it("shows the requested navigation and combines the existing topics into one Rules page", async () => {
@@ -92,14 +83,14 @@ it("shows the requested navigation and combines the existing topics into one Rul
   expect(html).toContain("<title>Operational Rules — JonVerk</title>");
   const navigation = html.match(/<nav aria-label="Main navigation"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   expect(navigation).toBeTruthy();
-  for (const [path, label] of [["/news", "Newsfeed"], ["/rules", "Rules"], ["/org", "Org"], ["https://projects.jonverk.online", "Projects"], ["/search", "Search"], ["/login", "Log in"]]) {
+  for (const [path, label] of [["/news", "Newsfeed"], ["/rules", "Rules"], ["/org", "Organization"], ["https://memory.jonverk.online", "Memory"], ["https://projects.jonverk.online", "Projects"], ["/search", "Search"], ["/login", "Log in"]]) {
     expect(navigation).toContain(`href="${path}"`);
     expect(navigation).toContain(`>${label}</a>`);
   }
   expect(navigation).not.toMatch(/Handbook|FAQ|Announcements|href="\/handbook|href="\/faq/);
   expect(html.match(/href="\/rules\/core-example"/g)).toHaveLength(1);
   expect(html.match(/href="\/rules\/reference-example"/g)).toHaveLength(1);
-  expect(html.match(/>Core Rules<\/h2>/g)).toHaveLength(1);
+
   expect(html).not.toContain("Frequently Asked Questions");
   expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM rules").first())?.n).toBe(2);
   const home = await (await request("/")).text();

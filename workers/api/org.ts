@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { AppEnv } from "../lib/env";
-import type { Rule } from "../lib/content";
-import { requireToken, writer } from "../lib/auth";
-import { mutateContent } from "../lib/mutations";
+
+import { requireToken } from "../lib/auth";
+import { publicChange } from "../lib/mutations";
 
 export const org = new Hono<{ Bindings: AppEnv }>();
 org.use("*", async (c, next) => {
@@ -30,11 +30,10 @@ org.put("/", async (c) => {
   }
   const diagram = body.match(/^```mermaid[^\S\r\n]*\r?\n([\s\S]*?)^```[^\S\r\n]*$/m);
   if (!diagram?.[1].trim()) return c.json({ message: "Include a nonempty fenced Mermaid block", field: "file" }, 400);
-  const rule = await c.env.DB.prepare("SELECT * FROM rules WHERE slug='org-chart' OR rule_id='ORG-001' ORDER BY CASE WHEN slug='org-chart' THEN 0 ELSE 1 END LIMIT 1").first<Rule>();
-  if (!rule) return c.json({ message: "Org entry not found. Create org-chart in Operational Rules first." }, 404);
-  if (rule.deleted_at) return c.json({ message: "The org entry is in trash. Restore it first." }, 409);
-  await mutateContent(c.env.DB, "rule", rule.slug, (await writer(c.req.raw, c.env))!, c.env.DB.prepare(
-    "UPDATE rules SET body_md=?,updated_at=? WHERE slug=? AND deleted_at IS NULL",
-  ).bind(body, new Date().toISOString(), rule.slug), { public: rule.status !== "draft" });
+  const ts = new Date().toISOString();
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO org_chart (id,title,body_md,updated_at) VALUES (1,'Organization Chart',?,?) ON CONFLICT(id) DO UPDATE SET body_md=excluded.body_md,updated_at=excluded.updated_at").bind(body, ts),
+    publicChange(c.env.DB, ts),
+  ]);
   return c.json({ ok: true });
 });

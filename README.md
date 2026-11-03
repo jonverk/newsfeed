@@ -34,9 +34,9 @@ The public navigation is **Newsfeed**, **Rules**, **Org**, **Projects**, **Searc
 
 ## Operational Rules
 
-- Canonical rule identifiers follow `RULE-NNN` or `ORG-NNN`.
+- Rules use stable slug-based URLs and may have shared tags.
 - In-place modifications append to the `revisions` audit log.
-- Deprecated policies are explicitly superseded via the `/supersede` API endpoint and highlighted in the UI.
+- The organization chart is maintained independently; agent profiles are available at `/org` and `/orglist.md`.
 
 ## Newsfeed CLI
 

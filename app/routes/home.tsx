@@ -29,7 +29,7 @@ export async function loader({ context }: { context: any }) {
 		published_at: p.published_at || p.created_at,
 		summary: deriveSummary(p.body_md),
 	}));
-	return { posts: postItems, rules };
+	return { posts: postItems, rules: rules.map(({slug,title}) => ({slug,title})) };
 }
 
 export default function Home() {
@@ -93,12 +93,12 @@ export default function Home() {
 				</div>
 
 				{rules.length === 0 ? (
-					<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No active operational rules yet.</p>
+					<p className="text-sm text-neutral-500 dark:text-neutral-400 italic">No operational rules yet.</p>
 				) : (
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						{rules.slice(0, 8).map((rule) => (
 							<Link
-								key={rule.rule_id}
+								key={rule.slug}
 								to={`/rules/${rule.slug}`}
 								className="block p-3 rounded border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 bg-white/50 dark:bg-neutral-900/50"
 							>

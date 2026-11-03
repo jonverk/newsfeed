@@ -86,25 +86,6 @@ export function validateRuleInput(input: unknown): { ok: true; value: NewRule } 
   if (new TextEncoder().encode(body).byteLength > 65536) {
     return { ok: false, field: "body", message: "body too large" };
   }
-  if (!CATEGORIES.includes(obj.category)) {
-    return { ok: false, field: "category", message: "invalid category" };
-  }
-  if (obj.owner === undefined || obj.owner === null) {
-    obj.owner = "";
-  }
-  if (typeof obj.owner !== "string") {
-    return { ok: false, field: "owner", message: "owner is required" };
-  }
-  if (obj.owner.length > 120) return { ok: false, field: "owner", message: "owner too long" };
-  if (obj.effective_at !== undefined && obj.effective_at !== null &&
-    (typeof obj.effective_at !== "string" || !/^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(obj.effective_at) || !Number.isFinite(Date.parse(obj.effective_at)))) {
-    return { ok: false, field: "effective_at", message: "invalid effective date" };
-  }
-  if (obj.rule_id !== undefined) {
-    if (typeof obj.rule_id !== "string" || !RULE_ID_RE.test(obj.rule_id)) {
-      return { ok: false, field: "rule_id", message: "invalid rule_id" };
-    }
-  }
   return { ok: true, value: obj as NewRule };
 }
 

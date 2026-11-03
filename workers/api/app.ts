@@ -5,6 +5,8 @@ import { surfaces } from "./surfaces";
 import { handbook } from "./handbook";
 import { search } from "./search";
 import { auth } from "./auth";
+import { tags } from "./tags";
+import { directory } from "./directory";
 import { org } from "./org";
 import { PRIVATE_CACHE, SESSION_COOKIE } from "../lib/auth";
 import { bodyLimit } from "hono/body-limit";
@@ -38,6 +40,8 @@ api.get("/api/health/fts", async (c) => {
 api.route("/api/posts", posts);
 api.route("/api/auth", auth);
 api.route("/api/org", org);
+api.route("/api/agents", directory);
+api.route("/api/tags", tags);
 api.route("/api/rules", handbook);
 // Retain existing CLI integrations while browser routes use /rules.
 api.route("/api/handbook", handbook);

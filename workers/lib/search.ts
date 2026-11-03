@@ -1,6 +1,6 @@
 import { getPublishedPost, getPostForAdmin, getRule } from "./content";
 
-export type SearchHit = { kind: "post" | "rule"; slug: string; title: string; snippet: string; url: string; md_url: string };
+export type SearchHit = { kind: "post" | "rule" | "agent"; slug: string; title: string; snippet: string; url: string; md_url: string };
 
 export async function indexDocument(db: D1Database, doc: { kind: "post" | "rule"; slug: string; title: string; body: string }): Promise<void> {
   try {
@@ -29,7 +29,7 @@ export function sanitizeSnippet(raw: string): string {
     .replace(/&lt;\/mark&gt;/g, "</mark>");
 }
 
-export async function searchContent(db: D1Database, q: string, kind?: "post" | "rule"): Promise<SearchHit[]> {
+async function searchEntries(db: D1Database, q: string, kind?: "post" | "rule"): Promise<SearchHit[]> {
   const query = (q || "").trim();
   if (!query) {
     return [];
@@ -49,7 +49,7 @@ FROM search_index
 JOIN (
   SELECT 'post' as kind, slug FROM posts WHERE deleted_at IS NULL AND status = 'published'
   UNION ALL
-  SELECT 'rule' as kind, slug FROM rules WHERE deleted_at IS NULL AND status IN ('active', 'superseded')
+  SELECT 'rule' as kind, slug FROM rules WHERE deleted_at IS NULL AND status = 'active'
 ) valid ON search_index.kind = valid.kind AND search_index.slug = valid.slug
 WHERE search_index MATCH ?`;
     if (kind) sql += " AND search_index.kind = ?";
@@ -96,7 +96,7 @@ async function fallbackSearch(db: D1Database, q: string, kind?: "post" | "rule")
   }
   if (!kind || kind === "rule") {
     const { results } = await db
-      .prepare("SELECT slug, title, body_md FROM rules WHERE deleted_at IS NULL AND status IN ('active','superseded') AND (title LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\') LIMIT 20")
+      .prepare("SELECT slug, title, body_md FROM rules WHERE deleted_at IS NULL AND status = 'active' AND (title LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\') LIMIT 20")
       .bind(pattern, pattern)
       .all();
     for (const r of (results || []) as any[]) {
@@ -104,4 +104,28 @@ async function fallbackSearch(db: D1Database, q: string, kind?: "post" | "rule")
     }
   }
   return hits;
+}
+
+export async function searchContent(db: D1Database, q: string, kind?: "post" | "rule"): Promise<SearchHit[]> {
+  const hits = await searchEntries(db, q, kind);
+  const query = q.trim();
+  if (query && query.replace(/[%_\\]/g, "")) {
+    const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
+    const rows = await db.prepare(`SELECT t.entity_type, t.entity_ref, COALESCE(p.title, r.title) AS title
+      FROM entry_tags t LEFT JOIN posts p ON t.entity_type='post' AND p.slug=t.entity_ref AND p.deleted_at IS NULL AND p.status='published'
+      LEFT JOIN rules r ON t.entity_type='rule' AND r.slug=t.entity_ref AND r.deleted_at IS NULL AND r.status='active'
+      WHERE t.tag LIKE ? ESCAPE '\\' AND (p.slug IS NOT NULL OR r.slug IS NOT NULL) LIMIT 20`).bind(pattern).all<{entity_type:"post"|"rule";entity_ref:string;title:string}>();
+    for (const row of rows.results) {
+      if ((kind && kind !== row.entity_type) || hits.some(h => h.kind === row.entity_type && h.slug === row.entity_ref)) continue;
+      const url = `/${row.entity_type === "post" ? "news" : "rules"}/${row.entity_ref}`;
+      hits.push({kind:row.entity_type,slug:row.entity_ref,title:row.title,snippet:"",url,md_url:`${url}.md`});
+    }
+  }
+  if (!kind && query && query.replace(/[%_\\]/g, "")) {
+    const escaped = query.replace(/[\\%_]/g, "\\$&");
+    const pattern = `%${escaped}%`;
+    const rows = await db.prepare("SELECT tag FROM agent_profiles WHERE tag LIKE ? ESCAPE '\\' OR body_md LIKE ? ESCAPE '\\' LIMIT 20").bind(pattern,pattern).all<{tag:string}>();
+    for (const row of rows.results) hits.push({kind:"agent",slug:row.tag,title:row.tag,snippet:"",url:`/org/${row.tag}`,md_url:"/orglist.md"});
+  }
+  return hits.slice(0,20);
 }

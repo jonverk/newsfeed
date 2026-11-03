@@ -9,5 +9,6 @@ export default [
 	route("rules", "routes/rules-index.tsx"),
 	route("rules/:slug", "routes/rules-detail.tsx"),
 	route("org", "routes/org.tsx"),
+	route("org/:tag", "routes/agent.tsx"),
 	route("search", "routes/search.tsx"),
 ] satisfies RouteConfig;

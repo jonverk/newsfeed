@@ -2,7 +2,7 @@ export type EntityKind = "post" | "rule";
 
 export function indexStatements(db: D1Database, kind: EntityKind, slug: string): D1PreparedStatement[] {
   const table = kind === "post" ? "posts" : "rules";
-  const visible = kind === "post" ? "status = 'published'" : "status IN ('active','superseded')";
+  const visible = kind === "post" ? "status = 'published'" : "status = 'active'";
   return [
     db.prepare("DELETE FROM search_index WHERE kind = ? AND slug = ?").bind(kind, slug),
     db.prepare(`INSERT INTO search_index (kind,slug,title,body) SELECT ?,slug,title,body_md FROM ${table} WHERE slug = ? AND deleted_at IS NULL AND ${visible}`).bind(kind, slug),

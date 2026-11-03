@@ -34,7 +34,7 @@ function Failure({ error }: { error: Error | null }) {
   </div>;
 }
 
-function EntryEditor({ section, item }: { section: "news" | "rules"; item: Post | Rule | null }) {
+function EntryEditor({ section, item, tags, selectedTags }: { section: "news" | "rules"; item: Post | Rule | null; tags: string[]; selectedTags: string[] }) {
   const task = useTask();
   const navigate = useNavigate();
   const creationKey = useRef<string | null>(null);
@@ -48,21 +48,25 @@ function EntryEditor({ section, item }: { section: "news" | "rules"; item: Post 
     await task.run(async () => {
       const title = String(form.get("title") || "");
       const body = String(form.get("body") || "");
+      let savedSlug = item?.slug;
       if (news) {
         const input = { title, body };
         if (!item) {
           creationKey.current ||= crypto.randomUUID();
-          await adminRequest("/api/posts", "POST", { ...input, draft: intent !== "publish" }, { "Idempotency-Key": creationKey.current });
+          const created = await adminRequest("/api/posts", "POST", { ...input, draft: intent !== "publish" }, { "Idempotency-Key": creationKey.current });
+          savedSlug = String(created.slug);
         } else {
           await adminRequest(`/api/posts/${item.slug}`, "PATCH", input);
           if (intent === "publish" && post?.status === "draft") await adminRequest(`/api/posts/${item.slug}/publish`, "POST");
         }
       } else {
         const slug = item?.slug || slugify(title);
+        savedSlug = slug;
         await adminRequest(`/api/rules/${slug}`, "PUT", {
-          title, body, category: rule?.category || "rules", owner: rule?.owner || "",
+          title, body,
         }, item ? undefined : { "If-None-Match": "*" });
       }
+      await adminRequest(`/api/tags/${news ? "post" : "rule"}/${savedSlug}`, "PUT", { tags: form.getAll("tags") });
       await navigate(`/admin/${section}?saved=1`);
     });
   }
@@ -75,6 +79,7 @@ function EntryEditor({ section, item }: { section: "news" | "rules"; item: Post 
         <label>Title<input name="title" defaultValue={item?.title || ""} required maxLength={120} /></label>
         <label>Body (Markdown)<textarea name="body" defaultValue={item?.body_md || ""} rows={20} className="font-mono text-sm" aria-describedby="body-help" /></label>
         <p id="body-help" className="text-xs opacity-70">Plain Markdown, up to 64 KiB.</p>
+        <fieldset><legend>Tags</legend>{tags.map(tag => <label key={tag}><input type="checkbox" name="tags" value={tag} defaultChecked={selectedTags.includes(tag)} /> {tag}</label>)}</fieldset>
         <Failure error={task.error} />
         <div className="flex flex-wrap items-center gap-3">
           {news && post?.status !== "published" ? <>
@@ -106,10 +111,10 @@ function OrgEditor({ item }: { item: Rule | null }) {
   }
   return <>
     <h1 className="text-3xl font-serif font-bold mb-6">Org chart</h1>
-    {!item ? <p>Create an entry named “Org chart” in Operational Rules first.</p> : item.deleted_at ? <p>The org chart is in trash. <Link to="/admin/trash" className="underline">Restore it</Link> before uploading a replacement.</p> : <>
+    {<>
       <p className="mb-4">Upload a Markdown file containing the replacement Mermaid chart. Saving updates the existing org entry immediately.</p>
       <div className="flex flex-wrap gap-5 text-sm mb-8"><a href="/org.md" download="org.md" className="underline">Download current org.md</a><a href="/org" target="_blank" rel="noreferrer" className="underline">View org chart</a></div>
-      <p className="text-xs font-mono opacity-70 mb-6">Last updated {item.updated_at}</p>
+      <p className="text-xs font-mono opacity-70 mb-6">Last updated {item?.updated_at || "not yet uploaded"}</p>
       <form className="admin-form" onSubmit={upload}>
         <fieldset disabled={task.pending} className="space-y-5">
           <label>Replacement Markdown file<input name="file" type="file" accept=".md,text/markdown" required /></label>
@@ -121,6 +126,22 @@ function OrgEditor({ item }: { item: Rule | null }) {
       </form>
     </>}
   </>;
+}
+
+function DirectoryEditor({ profiles, tags }: { profiles: {tag:string; body_md:string}[]; tags: string[] }) {
+  const task = useTask(); const revalidator = useRevalidator();
+  const [selected, setSelected] = useState("");
+  const current = profiles.find(p => p.tag === selected);
+  async function save(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault(); const form = new FormData(e.currentTarget); const tag = String(form.get("tag"));
+    await task.run(async () => { await adminRequest(`/api/agents/${tag}`, "PUT", {body: String(form.get("body"))}, current ? undefined : {"If-None-Match":"*"}); setSelected(tag); await revalidator.revalidate(); });
+  }
+  return <section className="mt-12 space-y-6"><h2 className="text-2xl font-serif font-bold">Agent profiles</h2>
+    <div className="flex gap-3 flex-wrap"><button type="button" onClick={() => setSelected("")} className="underline">New agent</button>{profiles.map(p => <button type="button" className="underline" key={p.tag} onClick={() => setSelected(p.tag)}>{p.tag}</button>)}</div>
+    <form key={selected} className="admin-form space-y-4" onSubmit={save}><label>Three-letter tag<input name="tag" required pattern="[A-Z]{3}" maxLength={3} defaultValue={selected} readOnly={!!current} /></label><label>Markdown description<textarea name="body" required rows={12} defaultValue={current?.body_md || ""} /></label><button className="admin-button" disabled={task.pending}>Save profile</button> {current && <button type="button" className="underline" onClick={() => { if (window.confirm(`Delete ${current.tag}?`)) void task.run(async () => { await adminRequest(`/api/agents/${current.tag}`, "DELETE"); setSelected(""); await revalidator.revalidate(); }); }}>Delete profile</button>}</form>
+    <h2 className="text-2xl font-serif font-bold">Tags</h2><form className="admin-form flex gap-3" onSubmit={e => { e.preventDefault(); const form = e.currentTarget; const name = String(new FormData(form).get("name")); void task.run(async () => { await adminRequest("/api/tags", "POST", {name}); form.reset(); await revalidator.revalidate(); }); }}><label>New tag<input name="name" required maxLength={80}/></label><button className="admin-button">Create tag</button></form>
+    <ul>{tags.map(tag => <li key={tag}>{tag} <button className="underline" type="button" onClick={() => { if (window.confirm(`Delete tag “${tag}” from all entries?`)) void task.run(async () => { await adminRequest(`/api/tags/${encodeURIComponent(tag)}`, "DELETE"); await revalidator.revalidate(); }); }}>Delete</button></li>)}</ul><Failure error={task.error}/>
+  </section>;
 }
 
 export default function Admin() {
@@ -138,8 +159,8 @@ export default function Admin() {
       <button disabled={task.pending} className="text-sm underline" onClick={() => task.run(async () => { await adminRequest("/api/auth/logout", "POST"); window.location.assign("/login"); })}>Log out</button>
     </div>
     <Failure error={task.error} />
-    {section === "org" ? <OrgEditor item={item as Rule | null} /> : result.editing && (section === "news" || section === "rules") ?
-      <EntryEditor key={`${section}:${item?.slug || "new"}`} section={section} item={item} /> : <>
+    {section === "org" ? <><OrgEditor item={item as Rule | null} /><DirectoryEditor profiles={result.profiles} tags={result.tags} /></> : result.editing && (section === "news" || section === "rules") ?
+      <EntryEditor key={`${section}:${item?.slug || "new"}`} section={section} item={item} tags={result.tags} selectedTags={result.selectedTags} /> : <>
         <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
           <h1 className="text-3xl font-serif font-bold">{section === "news" ? "Newsfeed" : section === "rules" ? "Operational Rules" : "Trash"}</h1>
           {section !== "trash" && <Link to={`/admin/${section}/new`} className="admin-button">Add entry</Link>}
@@ -150,7 +171,7 @@ export default function Admin() {
         <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
           {items.map((entry) => <li key={`${entry.entity}:${entry.slug}`} className="py-5 flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1 basis-64">
-              {section === "trash" ? <p className="font-medium break-words">{entry.title}</p> : <Link className="font-medium underline break-words" to={entry.slug === "org-chart" || entry.rule_id === "ORG-001" ? "/admin/org" : `/admin/${section}/${entry.slug}/edit`}>{entry.title}</Link>}
+              {section === "trash" ? <p className="font-medium break-words">{entry.title}</p> : <Link className="font-medium underline break-words" to={`/admin/${section}/${entry.slug}/edit`}>{entry.title}</Link>}
               <p className="text-xs font-mono opacity-70 mt-2 break-words">{entry.entity === "post" && entry.status === "draft" ? "Draft" : ""}{entry.deleted_at ? ` · Trashed ${entry.deleted_at.slice(0, 10)}` : ""}</p>
             </div>
             <button className="text-sm underline disabled:opacity-50" disabled={task.pending} aria-label={`${section === "trash" ? "Restore" : "Trash"} ${entry.title}`} onClick={() => {

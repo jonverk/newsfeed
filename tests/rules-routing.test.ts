@@ -21,8 +21,7 @@ it("uses the same content for canonical and legacy rule clients, including trash
   expect(denied.status).toBe(401);
   const created = await SELF.fetch(`${origin}/api/rules/example`, { method: "PUT", headers, body: JSON.stringify({ title: "Example", body: "rulebody", category: "rules", owner: "Jon" }) });
   expect(created.status).toBe(200);
-  const { id, rule_id } = await created.json<{ id: number; rule_id: string }>();
-  const rule = { id, rule_id, slug: "example", body_md: "rulebody", status: "active" };
+  const rule = { slug: "example", body_md: "rulebody" };
   const legacy = await (await SELF.fetch(`${origin}/api/handbook/example`)).json();
   expect(legacy).toMatchObject(rule);
   for (const prefix of ["/rules", "/handbook"]) {
@@ -42,7 +41,7 @@ it("generates canonical rule URLs in both search paths and agent exports", async
   for (const query of ["zzsharedcontent", "z"]) {
     const search = await SELF.fetch(`${origin}/api/search?q=${query}`);
     const result = await search.json<{ hits: { url: string; md_url: string }[] }>();
-    expect(result.hits).toEqual([expect.objectContaining({ url: "/rules/from-cli", md_url: "/rules/from-cli.md" })]);
+    expect(result.hits).toEqual(expect.arrayContaining([expect.objectContaining({ url: "/rules/from-cli", md_url: "/rules/from-cli.md" })]));
   }
   const index = await (await SELF.fetch(`${origin}/llms.txt`)).text();
   expect(index).toContain("## Newsfeed");

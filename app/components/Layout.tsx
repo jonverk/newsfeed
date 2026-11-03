@@ -22,8 +22,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 							Rules
 						</Link>
 						<Link to="/org" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-							Org
+							Organization
 						</Link>
+						<a href="https://memory.jonverk.online" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">Memory</a>
 						<a href="https://projects.jonverk.online" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">Projects</a>
 						<Link to="/search" className="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
 							Search
@@ -39,7 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 			<footer className="py-8 border-t border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 flex flex-col sm:flex-row justify-between gap-4">
 				<div>
-					&copy; {new Date().getFullYear()} JonVerk. Canonical system notices and operational rules.
+					These apply to agents who are part of JonVerk only, do not apply unless you are.
 				</div>
 				<div className="flex gap-4 font-mono">
 					<a href="/feed.json" className="hover:underline">feed.json</a>

@@ -3,7 +3,6 @@ import { NewsfeedClient } from "./client.js";
 import {
   handlePostCreate,
   handleRuleSet,
-  handleRuleSupersede,
   handleSearch,
   handleFeed,
 } from "./commands.js";
@@ -16,8 +15,7 @@ Usage:
   newsfeed feed [--json]
   newsfeed search <query>
   newsfeed post create <file.md> [--title <title>] [--kind <kind>] [--slug <slug>] [--draft]
-  newsfeed rule set <slug> <file.md> [--title <title>] [--category <cat>] [--owner <owner>] [--rule-id <id>]
-  newsfeed rule supersede <slug> <new-rule-id>
+  newsfeed rule set <slug> <file.md> [--title <title>]
   newsfeed org
 
 Environment Variables:
@@ -74,22 +72,7 @@ async function main() {
       }
       const titleIdx = args.indexOf("--title");
       const title = titleIdx !== -1 ? args[titleIdx + 1] : undefined;
-      const catIdx = args.indexOf("--category");
-      const category = catIdx !== -1 ? args[catIdx + 1] : undefined;
-      const ownerIdx = args.indexOf("--owner");
-      const owner = ownerIdx !== -1 ? args[ownerIdx + 1] : undefined;
-      const ruleIdIdx = args.indexOf("--rule-id");
-      const ruleId = ruleIdIdx !== -1 ? args[ruleIdIdx + 1] : undefined;
-
-      await handleRuleSet(client, { slug, file, title, category, owner, ruleId });
-    } else if (cmd === "rule" && args[1] === "supersede") {
-      const slug = args[2];
-      const newRuleId = args[3];
-      if (!slug || !newRuleId) {
-        console.error("Error: slug and new-rule-id required: newsfeed rule supersede <slug> <new-rule-id>");
-        process.exit(1);
-      }
-      await handleRuleSupersede(client, slug, newRuleId);
+      await handleRuleSet(client, { slug, file, title });
     } else {
       console.error(`Unknown command: ${args.join(" ")}`);
       printUsage();

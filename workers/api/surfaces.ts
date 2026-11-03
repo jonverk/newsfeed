@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../lib/env";
-import { listPublishedPosts, getPublishedPost, listRules, getRule, getOrgRule, getPublicState } from "../lib/content";
+import { listPublishedPosts, getPublishedPost, listRules, getRule, getOrgRule, listProfiles, getTags, getPublicState } from "../lib/content";
 import { deriveSummary, toMarkdownDocument } from "../lib/render";
 import { conditionalResponse, etagFor } from "../lib/http";
 
@@ -18,18 +18,19 @@ surfaces.get("/feed.json", async (c) => {
     if (!isNaN(n)) limit = Math.min(Math.max(n, 1), 200);
   }
   const posts = await listPublishedPosts(c.env.DB, { limit });
-  const items = posts.map((p) => ({
+  const items = await Promise.all(posts.map(async (p) => ({
     id: p.id,
     slug: p.slug,
     title: p.title,
     kind: p.kind,
+    tags: await getTags(c.env.DB, "post", p.slug),
     author: p.author,
     published_at: p.published_at,
     updated_at: p.updated_at,
     summary: deriveSummary(p.body_md),
     url: `/news/${p.slug}`,
     md_url: `/news/${p.slug}.md`,
-  }));
+  })));
   const updated_at = (await getPublicState(c.env.DB)).changed_at;
   const body = JSON.stringify({ version: 1, updated_at, items }, null, 0);
   return conditionalResponse(c.req.raw, body, { contentType: "application/json", updatedAt: updated_at });
@@ -46,6 +47,7 @@ surfaces.get("/news/:file{[^/]+\\.md}", async (c) => {
       slug: post.slug,
       id: post.id,
       status: post.status,
+      tags: (await getTags(c.env.DB, "post", post.slug)).join(", "),
       kind: post.kind,
       author: post.author,
       published_at: post.published_at,
@@ -66,13 +68,7 @@ surfaces.on("GET", ["/rules/:file{[^/]+\\.md}", "/handbook/:file{[^/]+\\.md}"], 
     frontmatter: {
       title: rule.title,
       slug: rule.slug,
-      rule_id: rule.rule_id,
-      status: rule.status,
-      category: rule.category,
-      owner: rule.owner,
-      effective_at: rule.effective_at,
-      updated_at: rule.updated_at,
-      superseded_by: rule.superseded_by,
+      tags: (await getTags(c.env.DB, "rule", rule.slug)).join(", "),
       canonical: `/rules/${rule.slug}`,
     },
     body: rule.body_md,
@@ -92,21 +88,10 @@ surfaces.get("/org.md", async (c) => {
   const ruleObj = await getOrgRule(c.env.DB);
   if (!ruleObj) return c.json({ message: "Not found" }, 404);
   const doc = toMarkdownDocument({
-    frontmatter: {
-      title: ruleObj.title,
-      slug: ruleObj.slug,
-      rule_id: ruleObj.rule_id,
-      status: ruleObj.status,
-      category: ruleObj.category,
-      owner: ruleObj.owner,
-      effective_at: ruleObj.effective_at,
-      updated_at: ruleObj.updated_at,
-      superseded_by: ruleObj.superseded_by,
-      canonical: "/org",
-    },
+    frontmatter: { title: ruleObj.title, canonical: "/org" },
     body: ruleObj.body_md,
   });
-  return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: ruleObj.updated_at || ruleObj.created_at });
+  return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: ruleObj.updated_at });
 });
 
 surfaces.get("/org.mmd", async (c) => {
@@ -114,7 +99,14 @@ surfaces.get("/org.mmd", async (c) => {
   if (!ruleObj) return c.json({ message: "Not found" }, 404);
   const match = ruleObj.body_md.match(/```mermaid\s*([\s\S]*?)```/);
   const mmd = match ? match[1].trim() : ruleObj.body_md;
-  return conditionalResponse(c.req.raw, mmd, { contentType: "text/plain; charset=utf-8", updatedAt: ruleObj.updated_at || ruleObj.created_at });
+  return conditionalResponse(c.req.raw, mmd, { contentType: "text/plain; charset=utf-8", updatedAt: ruleObj.updated_at });
+});
+
+surfaces.get("/orglist.md", async c => {
+  const profiles = await listProfiles(c.env.DB);
+  const updated = (await getPublicState(c.env.DB)).changed_at;
+  const body = "# Agent directory\n\n" + profiles.map(p => `## ${p.tag}\n\n${p.body_md}`).join("\n\n");
+  return conditionalResponse(c.req.raw, body, { contentType: "text/markdown; charset=utf-8", updatedAt: updated });
 });
 
 surfaces.get("/llms.txt", async (c) => {
@@ -130,26 +122,17 @@ surfaces.get("/llms.txt", async (c) => {
     out += `- [${p.title}](/news/${p.slug}.md) — ${summary} (${d})\n`;
   }
   out += "\n## Operational Rules\n\n";
-  // group by category
-  const byCat: Record<string, any[]> = {};
-  for (const r of rules) {
-    if (r.status === "draft") continue;
-    if (!byCat[r.category]) byCat[r.category] = [];
-    byCat[r.category].push(r);
-  }
-  for (const cat of Object.keys(byCat)) {
-    for (const r of byCat[cat]) {
-      out += `- [${r.title}](/rules/${r.slug}.md) — ${r.rule_id}${r.status === "superseded" && r.superseded_by ? ` (superseded by ${r.superseded_by})` : ""}\n`;
-    }
-  }
+  for (const r of rules) out += `- [${r.title}](/rules/${r.slug}.md)\n`;
   out += "\n## Org\n\n";
   if (await getOrgRule(c.env.DB)) out += "- [Org chart](/org.md)\n";
+  out += "- [Agent directory](/orglist.md)\n";
+  for (const profile of await listProfiles(c.env.DB)) out += `- [${profile.tag}](/org/${profile.tag})\n`;
   return conditionalResponse(c.req.raw, out, { contentType: "text/plain; charset=utf-8", updatedAt: updated || nowIso() });
 });
 
 surfaces.get("/llms-full.txt", async (c) => {
   const posts = await listPublishedPosts(c.env.DB, { limit: 200 });
-  const rules = await listRules(c.env.DB, { statuses: ["active", "superseded"] });
+  const rules = await listRules(c.env.DB);
   const updated = (await getPublicState(c.env.DB)).changed_at;
   const chunks: string[] = [];
   for (const p of posts) {
@@ -159,6 +142,7 @@ surfaces.get("/llms-full.txt", async (c) => {
         slug: p.slug,
         id: p.id,
         status: p.status,
+        tags: (await getTags(c.env.DB, "post", p.slug)).join(", "),
         kind: p.kind,
         author: p.author,
         published_at: p.published_at,
@@ -175,19 +159,14 @@ surfaces.get("/llms-full.txt", async (c) => {
       frontmatter: {
         title: r.title,
         slug: r.slug,
-        rule_id: r.rule_id,
-        status: r.status,
-        category: r.category,
-        owner: r.owner,
-        effective_at: r.effective_at,
-        updated_at: r.updated_at,
-        superseded_by: r.superseded_by,
+        tags: (await getTags(c.env.DB, "rule", r.slug)).join(", "),
         canonical: `/rules/${r.slug}`,
       },
-      body: r.status === "superseded" ? `> SUPERSEDED by ${r.superseded_by || ""}\n\n` + r.body_md : r.body_md,
+      body: r.body_md,
     });
     chunks.push(doc);
   }
+  for (const profile of await listProfiles(c.env.DB)) chunks.push(`## ${profile.tag}\n\n${profile.body_md}`);
   const out = chunks.join("\n\n---\n\n");
   const etag = await etagFor(out, updated);
   const ifNone = c.req.header("if-none-match");

@@ -10,5 +10,5 @@ export async function loader({ params, context }: { params: { tag?: string }, co
 }
 export default function Agent() {
   const { profile, html } = useLoaderData<typeof loader>();
-  return <Layout><Link to="/org" className="underline">← Organization</Link><h1 className="text-3xl font-serif font-bold my-6">{profile.tag}</h1><Markdown html={html} /></Layout>;
+  return <Layout><Link to="/org" className="underline">← Organization</Link><h1 className="text-3xl font-serif font-bold my-6">{profile.tag}</h1><a className="underline" href={`/org/${profile.tag}.md`}>View Markdown source</a><Markdown html={html} /></Layout>;
 }

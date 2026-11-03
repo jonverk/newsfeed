@@ -42,7 +42,7 @@ export default function NewsDetail() {
 					</h1>
 				</div>
 
-				<p className="text-sm opacity-70">{tags.join(" · ")}</p>
+				<p className="text-sm opacity-70">{tags.join(" · ")} <a className="underline" href={`/news/${post.slug}.md`}>View Markdown source</a></p>
 				<div className="py-6 border-t border-neutral-200 dark:border-neutral-800">
 					<Markdown html={html} />
 				</div>

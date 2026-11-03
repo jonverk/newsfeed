@@ -94,6 +94,15 @@ surfaces.get("/org.md", async (c) => {
   return conditionalResponse(c.req.raw, doc, { contentType: "text/markdown; charset=utf-8", updatedAt: ruleObj.updated_at });
 });
 
+surfaces.get("/org/:file{[^/]+\\.md}", async c => {
+  const tag = c.req.param("file").slice(0,-3);
+  if (!/^[A-Z]{3}$/.test(tag)) return c.json({message:"Not found"},404);
+  const profile = await c.env.DB.prepare("SELECT body_md FROM agent_profiles WHERE tag=?").bind(tag).first<{body_md:string}>();
+  if (!profile) return c.json({message:"Not found"},404);
+  const updated = (await getPublicState(c.env.DB)).changed_at;
+  return conditionalResponse(c.req.raw, profile.body_md, {contentType:"text/markdown; charset=utf-8",updatedAt:updated});
+});
+
 surfaces.get("/orglist.md", async c => {
   const profiles = await listProfiles(c.env.DB);
   const updated = (await getPublicState(c.env.DB)).changed_at;
@@ -118,7 +127,7 @@ surfaces.get("/llms.txt", async (c) => {
   out += "\n## Org\n\n";
   if (await getOrgRule(c.env.DB)) out += "- [Org chart](/org.md)\n";
   out += "- [Agent directory](/orglist.md)\n";
-  for (const profile of await listProfiles(c.env.DB)) out += `- [${profile.tag}](/org/${profile.tag})\n`;
+  for (const profile of await listProfiles(c.env.DB)) out += `- [${profile.tag}](/org/${profile.tag}.md)\n`;
   return conditionalResponse(c.req.raw, out, { contentType: "text/plain; charset=utf-8", updatedAt: updated || nowIso() });
 });
 

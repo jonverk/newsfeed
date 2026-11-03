@@ -31,7 +31,7 @@ export default function Org() {
 			<div className="mb-6">
 				<div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 font-mono mb-2">
 					<a href="/org.md" className="underline hover:text-neutral-900 dark:hover:text-neutral-100">
-						raw .md
+						View Markdown source
 					</a>
 				</div>
 				<h1 className="text-3xl font-serif font-bold text-neutral-900 dark:text-neutral-100 leading-tight">

@@ -34,6 +34,25 @@ function Failure({ error }: { error: Error | null }) {
   </div>;
 }
 
+function MarkdownReplacement({kind, id}: {kind: "post" | "rule" | "agent"; id: string}) {
+  const task = useTask();
+  async function upload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!window.confirm("Replace this item's Markdown body with the uploaded file?")) return;
+    const data = new FormData(event.currentTarget);
+    await task.run(async () => { await adminRequest(`/api/source/${kind}/${encodeURIComponent(id)}`, "PUT", data); window.location.reload(); });
+  }
+  return <section className="mt-10 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+    <h2 className="text-xl font-serif font-bold mb-3">Markdown source</h2>
+    <a className="underline" href={`/api/source/${kind}/${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">View Markdown source</a>
+    <form className="admin-form mt-4 space-y-4" onSubmit={upload}>
+      <label>Replacement Markdown file<input type="file" name="file" accept=".md,text/markdown" required /></label>
+      <p className="text-xs opacity-70">Uploading replaces the body; the title, categories, and publication status stay the same.</p>
+      <Failure error={task.error}/><button className="admin-button" disabled={task.pending}>{task.pending ? "Uploading…" : "Upload replacement"}</button>
+    </form>
+  </section>;
+}
+
 function EntryEditor({ section, item, tags, selectedTags }: { section: "news" | "rules"; item: Post | Rule | null; tags: string[]; selectedTags: string[] }) {
   const task = useTask();
   const navigate = useNavigate();
@@ -91,6 +110,7 @@ function EntryEditor({ section, item, tags, selectedTags }: { section: "news" | 
         </div>
       </fieldset>
     </form>
+    {item && <MarkdownReplacement kind={news ? "post" : "rule"} id={item.slug} />}
   </>;
 }
 
@@ -140,6 +160,7 @@ function DirectoryEditor({ profiles, tags }: { profiles: {tag:string; body_md:st
   return <section className="mt-12 space-y-6"><h2 className="text-2xl font-serif font-bold">Agent profiles</h2>
     <div className="flex gap-3 flex-wrap"><button type="button" onClick={() => setSelected("")} className="underline">New agent</button>{profiles.map(p => <button type="button" className="underline" key={p.tag} onClick={() => setSelected(p.tag)}>{p.tag}</button>)}</div>
     <form key={selected} className="admin-form space-y-4" onSubmit={save}><label>Three-letter tag<input name="tag" required pattern="[A-Z]{3}" maxLength={3} defaultValue={selected} readOnly={!!current} /></label><label>Markdown description<textarea name="body" required rows={12} defaultValue={current?.body_md || ""} /></label><button className="admin-button" disabled={task.pending}>Save profile</button> {current && <button type="button" className="underline" onClick={() => { if (window.confirm(`Delete ${current.tag}?`)) void task.run(async () => { await adminRequest(`/api/agents/${current.tag}`, "DELETE"); setSelected(""); await revalidator.revalidate(); }); }}>Delete profile</button>}</form>
+    {current && <MarkdownReplacement key={current.tag} kind="agent" id={current.tag} />}
     <h2 className="text-2xl font-serif font-bold">Categories</h2><form className="admin-form flex gap-3" onSubmit={e => { e.preventDefault(); const form = e.currentTarget; const name = String(new FormData(form).get("name")); void task.run(async () => { await adminRequest("/api/tags", "POST", {name}); form.reset(); await revalidator.revalidate(); }); }}><label>New category<input name="name" required maxLength={80}/></label><button className="admin-button">Create category</button></form>
     <ul>{tags.map(tag => <li key={tag}>{tag} <button className="underline" type="button" onClick={() => { if (window.confirm(`Delete category “${tag}” from all entries?`)) void task.run(async () => { await adminRequest(`/api/tags/${encodeURIComponent(tag)}`, "DELETE"); await revalidator.revalidate(); }); }}>Delete</button></li>)}</ul><Failure error={task.error}/>
   </section>;

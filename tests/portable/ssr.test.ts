@@ -127,3 +127,16 @@ it("serves canonical rule details and preserves old page and admin bookmarks", a
   expect(editHtml).not.toContain("Handbook");
   expect(editHtml).not.toContain('value="faq"');
 });
+
+it("offers Markdown sources on public pages and replacement uploads to editors", async () => {
+  const cookie = await login();
+  await request("/api/rules/source-rule", {method:"PUT", headers:bearer, body:JSON.stringify({title:"Source rule",body:"rule text"})});
+  const post = await (await request("/api/posts", {method:"POST",headers:bearer,body:JSON.stringify({title:"Source news",body:"news text"})})).json() as {slug:string};
+  await request("/api/agents/SRC", {method:"PUT",headers:bearer,body:JSON.stringify({body:"profile text"})});
+  for (const [path, link] of [["/rules/source-rule","/rules/source-rule.md"],[`/news/${post.slug}`,`/news/${post.slug}.md`],["/org/SRC","/org/SRC.md"]]) {
+    const html = await (await request(path)).text(); expect(html).toContain(`href="${link}"`); expect(html).toContain("View Markdown source");
+  }
+  for (const path of ["/admin/rules/source-rule/edit",`/admin/news/${post.slug}/edit`]) {
+    const html = await (await request(path,{headers:{cookie}})).text(); expect(html).toContain("Upload replacement"); expect(html).toContain("View Markdown source");
+  }
+});

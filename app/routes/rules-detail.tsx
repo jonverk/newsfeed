@@ -43,7 +43,7 @@ export default function RuleDetail() {
 					</h1>
 				</div>
 
-				<p className="text-sm opacity-70">{tags.join(" · ")} <a href={`/rules/${rule.slug}.md`} className="underline">Markdown</a></p>
+				<p className="text-sm opacity-70">{tags.join(" · ")} <a href={`/rules/${rule.slug}.md`} className="underline">View Markdown source</a></p>
 				<div className="py-6 border-t border-neutral-200 dark:border-neutral-800">
 					<Markdown html={html} />
 				</div>

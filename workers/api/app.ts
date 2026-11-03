@@ -5,6 +5,7 @@ import { surfaces } from "./surfaces";
 import { handbook } from "./handbook";
 import { search } from "./search";
 import { auth } from "./auth";
+import { source } from "./source";
 import { tags } from "./tags";
 import { directory } from "./directory";
 import { org } from "./org";
@@ -42,6 +43,7 @@ api.route("/api/auth", auth);
 api.route("/api/org", org);
 api.route("/api/agents", directory);
 api.route("/api/tags", tags);
+api.route("/api/source", source);
 api.route("/api/rules", handbook);
 // Retain existing CLI integrations while browser routes use /rules.
 api.route("/api/handbook", handbook);
